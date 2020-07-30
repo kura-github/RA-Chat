@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="hsp-chat-logo.png" type="image/png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <title>HSP-chat</title>
+
+</head>
+<body>
+    <div id="wrapper">
+        <!--<h1>Chat-app</h1>-->
+
+        <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
+            <a class="nav-item nav-link" href="index.html">HOME</a>
+            <a class="nav-item nav-link" href="">POST</a>
+
+        </nav>
+
+        <div id="lower-area">
+            <div id="join-screen">
+                <form id="join-form" action="">
+                    <select id="input_room">
+                        <option value="room01">Room01</option>
+                        <option value="room02">Room02</option>
+                    </select>
+                    <input type="text" id="input_nickname" autocomplete="off" placeholder="Nickname"/><button type="submit" class="btn-xs btn-dark">Join</button>
+                    
+                </form>
+            </div>
+
+            <div id="chat-screen">
+                <div id="message_list"></div>
+
+                <!--
+                <div id="posted-article">
+            
+                </div>
+                -->
+                <form id="chat-form" action="">
+                    Nickname : <span id="nickname"></span> Room : <span id="room"></span>
+                    <br/>
+                    <input type="text" id="input_message" autocomplete="off" placeholder="Message"/>
+                    <button type="submit" class="btn-xs btn-success" id="send_button">send</button><br><br>
+                    <button id="leave_button">exit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="client.js"></script>
+    
+</body>
+</html>
