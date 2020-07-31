@@ -4,6 +4,7 @@
 const express = require( 'express' );
 const http = require( 'http' );
 const socketIO = require( 'socket.io' );
+const fs = require('fs');
 
 // オブジェクト
 const app = express();
@@ -157,6 +158,19 @@ io.on('connection', (socket) => {
         socket.on('stop typing', () => {
 
         });
+
+        socket.on('word regist', (word) => {
+            fs.writeFile('./NG_word.txt', word, (error, data) => {
+                console.log(word);
+                if(error) {
+                    console.log(error);
+                }
+                else {
+                    console.log('write end');
+                }
+            });
+        });
+
 });
 
 // 公開フォルダの指定

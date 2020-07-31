@@ -55,6 +55,17 @@ $('#input_message').on('input', () => {
     socket.emit('typing');
 });
 
+$('#regist_button').click(() => {
+    //入力ダイアログからの文字列を格納する
+    let word;
+    word = window.prompt('NGワードを入力して下さい');
+
+    if(word) {
+        console.log('registerd', word);
+        socket.emit('word regist', word);
+    }
+});
+
 // サーバーからのメッセージ拡散に対する処理
 // ・サーバー側のメッセージ拡散時の「io.emit( 'spread message', strMessage );」に対する処理
 socket.on('spread message', ( objMessage ) => {
