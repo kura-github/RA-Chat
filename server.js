@@ -5,6 +5,7 @@ const express = require( 'express' );
 const http = require( 'http' );
 const socketIO = require( 'socket.io' );
 const fs = require('fs');
+const readline = require('readline');
 
 // オブジェクト
 const app = express();
@@ -25,6 +26,16 @@ const toDoubleDigitString = (num) => {
 const makeTimeString = (time) => {
     return toDoubleDigitString(time.getFullYear()) + '/' + toDoubleDigitString(time.getMonth() + 1) + '/' + toDoubleDigitString(time.getDate())
     + ' ' + toDoubleDigitString( time.getHours() ) + ':' + toDoubleDigitString( time.getMinutes());
+}
+
+const filtering = (word) => {
+    fs.readFile('./NG_word.txt', 'utf-8', (err,data) => {
+        if(err) {
+            throw err;
+        }
+        console.log(data);
+    });
+    return true;
 }
 
 // グローバル変数
@@ -121,21 +132,27 @@ io.on('connection', (socket) => {
                     messageType = 'receive';
                 }
 
-                // メッセージオブジェクトの作成
-
-                const objMessage = {
-                    strNickname: strNickname,
-                    strMessage: strMessage,
-                    strDate: strNow,
-                    type: messageType
-                };
-
-                console.log('socket id:', socket.id);
+                //console.log('socket id:', socket.id);
                 // 送信元含む全員に送信
                 //io.emit( 'spread message', strMessage );
-                io.to(room).emit( 'spread message', objMessage );
+                if(filtering(strMessage) === true) {
+
+                    // メッセージオブジェクトの作成
+                    const objMessage = {
+                        strNickname: strNickname,
+                        strMessage: strMessage,
+                        strDate: strNow,
+                        type: messageType
+                    };
+                    io.to(room).emit( 'spread message', objMessage );
+                }
+                else {
+                    alert('特定の単語が含まれているため、その内容のメッセージは送信出来ません');
+                }
+                
         });
 
+        //メッセージ入力中の処理
         socket.on('typing', () => {
 
             if(typing === false) {
@@ -159,18 +176,19 @@ io.on('connection', (socket) => {
 
         });
 
+        //NGワード登録時の処理
         socket.on('word regist', (word) => {
-            fs.writeFile('./NG_word.txt', word, (error, data) => {
+            fs.appendFile('./NG_word.txt', word, (error, data) => {
                 console.log(word);
                 if(error) {
                     console.log(error);
+                    
                 }
                 else {
                     console.log('write end');
                 }
             });
         });
-
 });
 
 // 公開フォルダの指定

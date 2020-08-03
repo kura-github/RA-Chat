@@ -94,8 +94,8 @@ nav a {
   color: white;
 }
 
-#leave_button :hover{
-  background-color: red;
+#leave_button {
+  transition: red .3s;
 }
 
 #posted-article {

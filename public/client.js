@@ -58,11 +58,18 @@ $('#input_message').on('input', () => {
 $('#regist_button').click(() => {
     //入力ダイアログからの文字列を格納する
     let word;
-    word = window.prompt('NGワードを入力して下さい');
+    word = prompt('追加するNGワードを入力して下さい');
+    console.log('registerd', word);
 
-    if(word) {
-        console.log('registerd', word);
+    if(!word) {
+        //カンマを付加
+        word += ',';
         socket.emit('word regist', word);
+        alert('NGワードが追加されました');
+        
+    }
+    else {
+        alert('ワードを入力して下さい');
     }
 });
 
