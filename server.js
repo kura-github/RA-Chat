@@ -7,6 +7,9 @@ const socketIO = require( 'socket.io' );
 const fs = require('fs');
 const readline = require('readline');
 
+//形態素解析用のモジュール
+const kuromoji = require('kuromoji');
+
 // オブジェクト
 const app = express();
 const server = http.Server( app );
@@ -15,6 +18,7 @@ const io = socketIO( server );
 // 定数
 const PORT = process.env.PORT || 3000;
 const SYSTEMNICKNAME = '管理人';
+const WARNING = '特定の単語が含まれているため、その内容のメッセージは送信出来ません';
 
 // 関数
 // 数字を２桁の文字列に変換
@@ -26,17 +30,65 @@ const toDoubleDigitString = (num) => {
 const makeTimeString = (time) => {
     return toDoubleDigitString(time.getFullYear()) + '/' + toDoubleDigitString(time.getMonth() + 1) + '/' + toDoubleDigitString(time.getDate())
     + ' ' + toDoubleDigitString( time.getHours() ) + ':' + toDoubleDigitString( time.getMinutes());
-}
+};
 
+//NGワードとの文字列比較を行う
 const filtering = (word) => {
-    fs.readFile('./NG_word.txt', 'utf-8', (err,data) => {
-        if(err) {
-            throw err;
+
+    //NGワードを格納する配列
+    let wordArray = Array();
+
+    //文字列比較用
+    let str = '';
+
+    //NGワードファイルを格納する一時変数
+    let data;
+
+    //判定結果   true: 送信可能なメッセージ,  false: 送信出来ないメッセージ
+    let result = true;
+
+    //NGワードファイルを読み込む(同期)
+    try {
+        data = fs.readFileSync('./NG_word.txt', 'utf-8');
+        //カンマで分割して配列に格納
+        wordArray = data.split(',');
+    }
+    catch(e) {
+        console.log(e);
+    }
+
+    //完全一致するかどうか
+    for(let i=0; i<wordArray.length-1; i++) {
+
+        //一致したらfalseにしてループを抜ける
+        if(wordArray[i] === word) {
+            console.log('bad-word');
+            result = false;
+            break;
         }
-        console.log(data);
-    });
-    return true;
-}
+    }
+
+    //部分一致するかどうか
+    for(let i=0; i<wordArray.length-1; i++) {
+
+        //NGワードの配列の要素をstrに代入
+        str = wordArray[i];
+        
+        //strと入力されたメッセージを比較
+        if(word.indexOf(str) !== -1) {
+            console.log('matched: ', str);
+            result = false;
+            break;
+        }
+    }
+
+    /*
+    例:  str : '消えろ',  word : 'お前は消えろ'    --->   部分一致している
+         str : '消えろ',  word : 'こんにちは'      --->   部分一致していない
+    */
+    
+    return result;
+};
 
 // グローバル変数
 let iCountUser = 0; // ユーザー数
@@ -50,11 +102,11 @@ let socketTmp;
 io.on('connection', (socket) => {
     console.log('connection');
 
-    let strNickname = '';	// コネクションごとで固有のニックネーム。イベントをまたいで使用される。
+    let strNickname = '';	// コネクションごとで固有のニックネーム, イベントをまたいで使用される
     let room = '';
 
         // 切断時の処理
-        // ・クライアントが切断したら、サーバー側では'disconnect'イベントが発生する
+        // ・クライアントが切断したら、サーバー側では'disconnect'イベントが発生
         socket.on('disconnect', () => {
             console.log( 'disconnect' );
 
@@ -80,7 +132,7 @@ io.on('connection', (socket) => {
         });
 
         // 入室時の処理
-        // ・クライアント側のメッセージ送信時の「socket.emit( 'join', strNickname );」に対する処理【12】
+        // ・クライアント側のメッセージ送信時の「socket.emit( 'join', strNickname );」に対する処理
         socket.on('join', ( strNickname_ , joinRoom_) => {
                 room = joinRoom_;
                 socket.join(room);
@@ -130,26 +182,40 @@ io.on('connection', (socket) => {
                 }
                 else {
                     messageType = 'receive';
-                }
+                }   
 
-                //console.log('socket id:', socket.id);
-                // 送信元含む全員に送信
-                //io.emit( 'spread message', strMessage );
-                if(filtering(strMessage) === true) {
+                //judge : 戻り値の判定用の変数
+                //true -> NGワードでない, false -> NGワード
+                let judge = filtering(strMessage);
 
-                    // メッセージオブジェクトの作成
+                if(judge) {
+                    //NGワードではない場合
+
                     const objMessage = {
                         strNickname: strNickname,
                         strMessage: strMessage,
                         strDate: strNow,
                         type: messageType
                     };
-                    io.to(room).emit( 'spread message', objMessage );
+
+                    //ルーム全員に送信
+                    io.to(room).emit('spread message', objMessage);
                 }
                 else {
-                    alert('特定の単語が含まれているため、その内容のメッセージは送信出来ません');
+                    //NGワードの場合
+
+                    messageType = 'system';
+                    
+                    const sysMessage = {
+                        strNickname: SYSTEMNICKNAME,
+                        strMessage: WARNING, //警告メッセージの定数
+                        strDate: strNow,
+                        type: messageType
+                    };
+
+                    //警告メッセージを送信元に送信
+                    io.to(socket.id).emit('spread message', sysMessage);
                 }
-                
         });
 
         //メッセージ入力中の処理
@@ -170,10 +236,6 @@ io.on('connection', (socket) => {
 
                 socket.broadcast.emit('spread message', objMessage);
             }
-        });
-
-        socket.on('stop typing', () => {
-
         });
 
         //NGワード登録時の処理

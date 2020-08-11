@@ -33,6 +33,7 @@ $( '#join-form' ).submit(() => {
 
 // 「Send」ボタンを押したときの処理
 $( 'form' ).submit(() => {
+
         console.log( '#input_message :', $( '#input_message' ).val() );
 
         if( $('#input_message').val()) {
@@ -57,16 +58,15 @@ $('#input_message').on('input', () => {
 
 $('#regist_button').click(() => {
     //入力ダイアログからの文字列を格納する
-    let word;
-    word = prompt('追加するNGワードを入力して下さい');
-    console.log('registerd', word);
+    
+    let word = prompt('追加するNGワードを入力して下さい');
 
-    if(!word) {
+    if(word) {
         //カンマを付加
         word += ',';
         socket.emit('word regist', word);
+        console.log('registerd', word);
         alert('NGワードが追加されました');
-        
     }
     else {
         alert('ワードを入力して下さい');
