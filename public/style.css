@@ -63,6 +63,13 @@ html, body {
   margin-top: 10px;
 }
 
+#emotion-set button{
+  border-radius: 5px black;
+  width: 30px;
+  height: 30px;
+  margin-right: 5px;
+}
+
 .send_message {
   background-color: aquamarine;
   color: black;
@@ -88,6 +95,10 @@ html, body {
   margin: 5px;
   max-width: 650px;
   text-align: center;
+}
+
+.box {
+  overflow-wrap: normal;
 }
 
 nav a {

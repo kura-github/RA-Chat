@@ -1,14 +1,19 @@
 'use strict';
 
-// モジュール
+//基本モジュール
 const express = require( 'express' );
 const http = require( 'http' );
 const socketIO = require( 'socket.io' );
 const fs = require('fs');
-const readline = require('readline');
 
 //形態素解析用のモジュール
 const kuromoji = require('kuromoji');
+
+//スクレイピング用のモジュール
+const cheerio = require('cheerio-httpcli');
+
+//スクレイピングする検索エンジンのURL
+const searchEngineURL = 'https://www.google.co.jp/search';
 
 // オブジェクト
 const app = express();
@@ -19,6 +24,9 @@ const io = socketIO( server );
 const PORT = process.env.PORT || 3000;
 const SYSTEMNICKNAME = '管理人';
 const WARNING = '特定の単語が含まれているため、その内容のメッセージは送信出来ません';
+const wp = '振替';
+const wn = '消えろ';
+const a = 0.9;
 
 // 関数
 // 数字を２桁の文字列に変換
@@ -86,8 +94,125 @@ const filtering = (word) => {
     例:  str : '消えろ',  word : 'お前は消えろ'    --->   部分一致している
          str : '消えろ',  word : 'こんにちは'      --->   部分一致していない
     */
+
+
+    var builder = kuromoji.builder({
+        //辞書があるディレクトリを指定
+        dicPath: 'node_modules/kuromoji/dict'
+    });
+  
+    // 形態素解析機を作るメソッド
+    builder.build((err, tokenizer) => {
+        // 辞書がなかった際のエラー表示
+        if(err) { 
+            throw err; 
+        }
     
+        // tokenizer.tokenize に文字列を渡して形態素解析する
+        var tokens = tokenizer.tokenize(word);
+        console.log(tokens);
+    });
+
+    calc_abusiveness(word);
+
     return result;
+};
+
+//悪口度を算出する関数
+const calc_abusiveness = (word) => {
+
+    /*
+    const customSearch = google.customsearch("v1");
+
+    //非同期処理
+    async function search_keyword(event) {
+
+        //htmlからキーワードを取ってくる
+        let keyword = "japan";
+
+        if (!keyword) return;
+            //非同期処理なので実行終了まで待つ
+        let text = await customSearch.cse.list({
+
+            //APIキー
+            auth: "AIzaSyCxqRxy6CUssc1o9v31I10CvtlFXu73wMo",
+
+            //カスタムエンジン名ID
+            cx: "eda774801274e7e9a",
+
+            //検索したいキーワード
+            q: keyword
+         });
+
+        //結果表示
+        console.log(text);
+    }
+    */
+
+    //C = Math.log(hit(w,wp) * hit(wn) / hit(w,wn) * hit(wp));  --> (1)
+    let c = 0;
+
+    //c = Math.log((hit(word, wp) * hit(wn)) / (hit(word, wn) * hit(wp)));
+    c = Math.log(1190000 * 231000 / 4300000 * 40700000);
+    //c = Math.log(hit_array[0] * hit_array[1] / hit_array[2] * hit_array[3]);
+    
+    let f = 0;
+    //f = a * Math.log(hit(wp) / hit(wn));
+    f = a * Math.log(4300000 / 40700000);
+    //f = a * Math.log(hit(wp) / hit(wn));  --> (2)
+
+    //SO-PMI = C + f; --> (3)
+    let SO_PMI = c + f;
+
+    console.log(c);
+    console.log(f);
+    console.log(SO_PMI);
+};
+
+//web検索結果の件数を検索エンジンのページからスクレイピングする関数
+const hit = (w1, w2) => {
+
+    //検索結果の件数を格納する変数
+    let hit_count = 0;
+
+    //検索する文字列を格納する変数
+    let query;
+
+    //パラメータの数によってqueryの中身を変える
+    if(!w1) {
+        query = w2;
+    }
+    else if(!w2) {
+        query = w1;
+    }
+    else {
+        query = w1 + ' ' + w2;
+    }
+    
+    //検索を行う
+    cheerio.fetch(searchEngineURL, {q: query})
+    .then((result) => {
+        //console.log(parseInt(result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1")));
+        hit_count = (result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1"));
+        console.log(hit_count);
+    })
+    .catch((err) => {
+        console.log(err);
+    })
+    .finally(() => {
+        console.log('done');
+    });
+
+    return hit_count;
+    /*
+    let result = cheerio.fetchSync(searchEngineURL, {q: query});
+    
+    hit_count = result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1");
+
+    console.log(hit_count);
+
+    return hit_count;
+    */
 };
 
 // グローバル変数
@@ -190,7 +315,7 @@ io.on('connection', (socket) => {
 
                 if(judge) {
                     //NGワードではない場合
-
+                    
                     const objMessage = {
                         strNickname: strNickname,
                         strMessage: strMessage,

@@ -93,10 +93,10 @@ socket.on('spread message', ( objMessage ) => {
             element = $('<p class="system_message"></p>').text( strMessage );
         }
         else if(objMessage.type === 'send') {
-            element = $('<div class="send_message"></div>').text( strMessage );
+            element = $('<p class="send_message"></p>').text( strMessage );
         }
         else {
-            element = $('<div class="receive_message"></div>').text(strMessage);
+            element = $('<p class="receive_message"></p>').text(strMessage);
         }
         
         box = $('<div class="box"></div>').html(element);

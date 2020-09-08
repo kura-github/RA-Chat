@@ -1,6 +1,2 @@
 #kuromoji.js関連のモジュールは含めない
-node_modules/async
-node_modules/doublearray
-node_modules/kuromoji
-node_modules/lodash
-node_modules/zlibjs
+node_modules/
