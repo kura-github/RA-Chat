@@ -292,7 +292,7 @@ io.on('connection', (socket) => {
 
         // 新しいメッセージ受信時の処理
         // ・クライアント側のメッセージ送信時の「socket.emit( 'new message', $( '#input_message' ).val() );」に対する処理
-        socket.on('new message', (strMessage) => {
+        socket.on('new message', (strMessage, emoji) => {
                 typing = false;
                 console.log( 'new message', strMessage );
 
@@ -320,7 +320,8 @@ io.on('connection', (socket) => {
                         strNickname: strNickname,
                         strMessage: strMessage,
                         strDate: strNow,
-                        type: messageType
+                        type: messageType,
+                        emotion: emoji
                     };
 
                     //ルーム全員に送信

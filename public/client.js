@@ -38,7 +38,7 @@ $( 'form' ).submit(() => {
 
         if( $('#input_message').val()) {
             // サーバーに、イベント名'new message' で入力テキストを送信
-            socket.emit('new message', $( '#input_message').val());
+            socket.emit('new message', $( '#input_message').val(), $('input[name="emotion"]:checked').val());
 
             $('#input_message').val('');    // テキストボックスを空にする
         }
@@ -73,6 +73,37 @@ $('#regist_button').click(() => {
     }
 });
 
+
+$('#emotion-set').click(() => {
+    var target = $(event.target).val();
+    console.log(target);
+
+    switch (target) {
+        case 'laugh':
+            $('input:radio[name="emotion"]').val(["laugh"]);
+            break;
+
+        case 'smile':
+            $('input:radio[name="emotion"]').val(["smile"]);
+            break;
+
+        case 'surprise':
+            $('input:radio[name="emotion"]').val(["surprise"]);
+            break;
+
+        case 'angry':
+            $('input:radio[name="emotion"]').val(["angry"]);
+            break;
+        
+        case 'cry':
+            $('input:radio[name="emotion"]').val(["cry"]);
+            break;
+        
+        default:
+            break;
+    }
+});
+
 // サーバーからのメッセージ拡散に対する処理
 // ・サーバー側のメッセージ拡散時の「io.emit( 'spread message', strMessage );」に対する処理
 socket.on('spread message', ( objMessage ) => {
@@ -86,21 +117,55 @@ socket.on('spread message', ( objMessage ) => {
         // 拡散されたメッセージをメッセージリストに追加
         //const li_element = $( '<li>' ).text( strMessage );
 
+        var mark;
         var element;
         var box;
 
-        if(objMessage.type === 'system') {
-            element = $('<p class="system_message"></p>').text( strMessage );
+        switch (objMessage.emoji) {
+            case 'laugh':
+                mark = $('<img src="./mark_face_laugh.png" id="message_emoji">');
+                break;
+
+            case 'smile':
+                mark = $('<img src="./mark_face_smile.png" id="message_emoji">');
+                break;
+
+            case 'surprise':
+                mark = $('<img src="./mark_face_odoroki.png" id="message_emoji">');
+                break;
+
+            case 'angry':
+                mark = $('<img src="./mark_face_angry.png" id="message_emoji">');
+                break;
+
+            case 'cry':
+                mark = $('<img src="./mark_face_cry.png" id="message_emoji">');
+                break;
+
+            default:
+                break;
         }
-        else if(objMessage.type === 'send') {
-            element = $('<p class="send_message"></p>').text( strMessage );
+
+        switch (objMessage.type) {
+            case 'system':
+                element = $('<p class="system_message"></p>').text( strMessage );
+                break;
+
+            case 'send':
+                element = $('<p class="send_message"></p>').text( strMessage );
+                break;
+
+            case 'receive':
+                element = $('<p class="receive_message"></p>').text( strMessage );
+                break;
+
+            default:
+                break;
         }
-        else {
-            element = $('<p class="receive_message"></p>').text(strMessage);
-        }
-        
+
         box = $('<div class="box"></div>').html(element);
         //$( '#message_list' ).prepend( li_element ); // リストの一番上に追加
+        $('#message_list').append(mark);
         $('#message_list').append(box);    // リストの一番下に追加
 } );
 

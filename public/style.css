@@ -63,12 +63,43 @@ html, body {
   margin-top: 10px;
 }
 
-#emotion-set button{
-  border-radius: 5px black;
+#emotion-value {
+  display: none;
+}
+
+#emotion-set button {
+  border-radius: 25px black;
   width: 30px;
   height: 30px;
-  margin-right: 5px;
+  margin: 5px;
+  background-color: azure;
 }
+
+#laugh {
+  background-image: url('./mark_face_laugh.png');
+  background-size: 25px 25px;
+}
+
+#smile {
+  background-image: url('./mark_face_smile.png');
+  background-size: 25px 25px;
+}
+
+#surprise {
+  background-image: url('./mark_face_odoroki.png');
+  background-size: 25px 25px;
+}
+
+#angry {
+  background-image: url('./mark_face_angry.png');
+  background-size: 25px 25px;
+}
+
+#cry {
+  background-image: url('./mark_face_cry.png');
+  background-size: 25px 25px;
+}
+
 
 .send_message {
   background-color: aquamarine;
