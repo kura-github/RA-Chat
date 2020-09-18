@@ -110,10 +110,10 @@ const filtering = (word) => {
     
         // tokenizer.tokenize に文字列を渡して形態素解析する
         var tokens = tokenizer.tokenize(word);
-        console.log(tokens);
+        //console.log(tokens);
     });
 
-    calc_abusiveness(word);
+    //calc_abusiveness(word);
 
     return result;
 };
@@ -295,6 +295,7 @@ io.on('connection', (socket) => {
         socket.on('new message', (strMessage, emoji) => {
                 typing = false;
                 console.log( 'new message', strMessage );
+                console.log('emotion:', emoji);
 
                 // 現在時刻の文字列の作成
                 const strNow = makeTimeString( new Date() );
@@ -307,7 +308,7 @@ io.on('connection', (socket) => {
                 }
                 else {
                     messageType = 'receive';
-                }   
+                }
 
                 //judge : 戻り値の判定用の変数
                 //true -> NGワードでない, false -> NGワード

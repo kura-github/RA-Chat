@@ -121,60 +121,52 @@ socket.on('spread message', ( objMessage ) => {
         var element;
         var box;
 
-        switch (objMessage.emoji) {
+        switch (objMessage.emotion) {
             case 'laugh':
-                mark = $('<img src="./mark_face_laugh.png" id="message_emoji">');
+                mark = '<td id="image_area"><img src="./mark_face_laugh.png"></td>';
                 break;
 
             case 'smile':
-                mark = $('<img src="./mark_face_smile.png" id="message_emoji">');
+                mark = '<td id="image_area"><img src="./mark_face_smile.png"></td>';
                 break;
 
             case 'surprise':
-                mark = $('<img src="./mark_face_odoroki.png" id="message_emoji">');
+                mark = '<td id="image_area"><img src="./mark_face_odoroki.png"></td>';
                 break;
 
             case 'angry':
-                mark = $('<img src="./mark_face_angry.png" id="message_emoji">');
+                mark = '<td id="image_area"><img src="./mark_face_angry.png"></td>';
                 break;
 
             case 'cry':
-                mark = $('<img src="./mark_face_cry.png" id="message_emoji">');
+                mark = '<td id="image_area"><img src="./mark_face_cry.png"></td>';
                 break;
 
             default:
+                mark = '<td></td>';
                 break;
         }
 
+        
         switch (objMessage.type) {
             case 'system':
-                element = $('<p class="system_message"></p>').text( strMessage );
+                element = '<td class="system_message">' + strMessage + '</td>';
                 break;
 
             case 'send':
-                element = $('<p class="send_message"></p>').text( strMessage );
+                element = '<td class="send_message">' + strMessage + '</td>';
                 break;
 
             case 'receive':
-                element = $('<p class="receive_message"></p>').text( strMessage );
+                element = '<td class="receive_message">' + strMessage + '</td>';
                 break;
 
             default:
                 break;
         }
 
-        box = $('<div class="box"></div>').html(element);
-        //$( '#message_list' ).prepend( li_element ); // リストの一番上に追加
-        $('#message_list').append(mark);
-        $('#message_list').append(box);    // リストの一番下に追加
+        box = '<tr>' + mark + element + '</tr>';
+        console.log(box);
+
+        $('tbody').append(box);    // リストの一番下に追加
 } );
-
-/*
-socket.on('receive message', (objMessage) => {
-    console.log('receive message :', objMessage);
-
-    const message = objMessage.strDate + ' - [' + objMessage.strNickname + '] ' + objMessage.strMessage;
-    let li_element = $('<li>').addClass("user_message").text(message);
-    $('#message_list').append(li_element);
-});
-*/

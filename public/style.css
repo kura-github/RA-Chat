@@ -54,7 +54,7 @@ html, body {
   margin-left: 10px;
 }
 
-#message_list {
+#message_table {
   border: solid 1px black;
   width: 700px;
   height: 500px;
@@ -63,15 +63,25 @@ html, body {
   margin-top: 10px;
 }
 
+#message_table img {
+  width: 30px;
+  height: 30px;
+}
+
+#image_area {
+  width: 40px;
+}
+
+
 #emotion-value {
   display: none;
 }
 
 #emotion-set button {
-  border-radius: 25px black;
   width: 30px;
   height: 30px;
-  margin: 5px;
+  margin-right: 5px;
+  margin-bottom: 5px;
   background-color: azure;
 }
 
@@ -130,20 +140,4 @@ html, body {
 
 .box {
   overflow-wrap: normal;
-}
-
-nav a {
-  color: white;
-}
-
-#leave_button {
-  transition: red .3s;
-}
-
-#posted-article {
-  border: solid 1px black;
-  width: 400px;
-  height: 500px;
-  overflow: auto;
-  margin-left: 10px;
 }
