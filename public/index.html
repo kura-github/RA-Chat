@@ -21,6 +21,9 @@
                     <select id="input_room">
                         <option value="room01">Room01</option>
                         <option value="room02">Room02</option>
+                        <option value="room03">Room03</option>
+                        <option value="room04">Room04</option>
+                        <option value="room05">Room05</option>
                     </select>
                     <input type="text" id="input_nickname" autocomplete="off" placeholder="Nickname"/><button type="submit" class="btn-xs btn-dark">Join</button>
                     
@@ -28,22 +31,17 @@
             </div>
 
             <div id="chat-screen">
-                <div id="message_table">
-                    <table>
+                <div id="message-list">
+                    <!--
+                    <table border="1px">
                         <tbody></tbody>
                     </table>
+                    -->
                 </div>
-
-                <!--
-                <div id="posted-article">
-            
-                </div>
-                -->
-
 
                 <div id="emotion-value">
                     <input type="radio" name="emotion" value="laugh">
-                    <input type="radio" name="emotion" value="smile">
+                    <input type="radio" name="emotion" value="smile" checked>
                     <input type="radio" name="emotion" value="surprise">
                     <input type="radio" name="emotion" value="angry">
                     <input type="radio" name="emotion" value="cry">

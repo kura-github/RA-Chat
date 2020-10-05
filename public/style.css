@@ -54,7 +54,7 @@ html, body {
   margin-left: 10px;
 }
 
-#message_table {
+#message-list {
   border: solid 1px black;
   width: 700px;
   height: 500px;
@@ -63,18 +63,17 @@ html, body {
   margin-top: 10px;
 }
 
-#message_table img {
-  width: 30px;
-  height: 30px;
+#message-list img {
+  width: 100%;
+  height: 100%;
 }
-
-#image_area {
-  width: 40px;
-}
-
-
 #emotion-value {
   display: none;
+}
+
+#emotion-set {
+  width: 200px;
+
 }
 
 #emotion-set button {
@@ -110,6 +109,36 @@ html, body {
   background-size: 25px 25px;
 }
 
+.image_area {
+  width: 40px;
+  margin: 10px 0px 10px 10px;
+  position: relative;
+}
+
+.image_area .caption {
+  position: absolute;
+  top: 20%;
+  left: 20%;
+  text-align: center;
+  font-size: 80%;
+  color: white;
+}
+
+.image_area .mask {
+  width:			100%;
+  height:			100%;
+  position:		absolute;	/* 絶対位置指定 */
+	top:			0;
+	left:			0;
+	opacity:		0;	/* マスクを表示しない */
+	background-color:	rgba(0,0,0,0.4);	/* マスクは半透明 */
+	-webkit-transition:	all 0.2s ease;
+	transition:		all 0.2s ease;
+}
+
+.image_area:hover .mask {
+	opacity:		1;	/* マスクを表示する */
+}
 
 .send_message {
   background-color: aquamarine;
@@ -135,9 +164,10 @@ html, body {
   padding: 10px;
   margin: 5px;
   max-width: 650px;
-  text-align: center;
+  align-items: center;
 }
 
 .box {
   overflow-wrap: normal;
+  display: flex;
 }

@@ -51,7 +51,6 @@ $('#leave_button').click(() => {
     location.href = 'index.html';
 });
 
-
 $('#input_message').on('input', () => {
     socket.emit('typing');
 });
@@ -73,9 +72,8 @@ $('#regist_button').click(() => {
     }
 });
 
-
 $('#emotion-set').click(() => {
-    var target = $(event.target).val();
+    let target = $(event.target).val();
     console.log(target);
 
     switch (target) {
@@ -102,12 +100,28 @@ $('#emotion-set').click(() => {
         default:
             break;
     }
+
+    $('#laugh').css('opacity', 0.3);
+
+    $('input:radio[name="emotion"]').each((key, value) => {
+        if($('input:radio[name="emotion"]').is(':checked') === false) {
+            $('#cry').css('opacity', 1);
+        }
+    });
 });
 
 // サーバーからのメッセージ拡散に対する処理
 // ・サーバー側のメッセージ拡散時の「io.emit( 'spread message', strMessage );」に対する処理
 socket.on('spread message', ( objMessage ) => {
-        //console.log( 'spread message :', strMessage );
+        
+        const objEmotion = {
+            laugh    : '<div class="image_area"><img src="./mark_face_laugh.png"><div class="mask"><div class="caption">笑顔</div></div></div>' ,
+            smile    : '<div class="image_area"><img src="./mark_face_smile.png"><div class="mask"><div class="caption">微笑み</div></div></div>',
+            surprise : '<div class="image_area"><img src="./mark_face_odoroki.png"><div class="mask"><div class="caption">驚き</div></div></div>',
+            angry    : '<div class="image_area"><img src="./mark_face_angry.png"><div class="mask"><div class="caption">怒り</div></div></div>',
+            cry      : '<div class="image_area"><img src="./mark_face_cry.png"><div class="mask"><div class="caption">悲しみ</div></div></div>',
+        };
+
         console.log( 'spread message :', objMessage );
 
         // メッセージの整形
@@ -123,50 +137,50 @@ socket.on('spread message', ( objMessage ) => {
 
         switch (objMessage.emotion) {
             case 'laugh':
-                mark = '<td id="image_area"><img src="./mark_face_laugh.png"></td>';
+                mark = objEmotion.laugh;
                 break;
 
             case 'smile':
-                mark = '<td id="image_area"><img src="./mark_face_smile.png"></td>';
+                mark = objEmotion.smile;
                 break;
 
             case 'surprise':
-                mark = '<td id="image_area"><img src="./mark_face_odoroki.png"></td>';
+                mark = objEmotion.surprise;
                 break;
 
             case 'angry':
-                mark = '<td id="image_area"><img src="./mark_face_angry.png"></td>';
+                mark = objEmotion.angry;
                 break;
 
             case 'cry':
-                mark = '<td id="image_area"><img src="./mark_face_cry.png"></td>';
+                mark = objEmotion.cry;
                 break;
 
             default:
-                mark = '<td></td>';
+                mark = ' ';
                 break;
         }
-
-        
+     
         switch (objMessage.type) {
             case 'system':
-                element = '<td class="system_message">' + strMessage + '</td>';
+                element = '<div class="system_message">' + strMessage + '</div>';
+                box = '<div class="box">' + mark + element + '</div>';
                 break;
 
             case 'send':
-                element = '<td class="send_message">' + strMessage + '</td>';
+                element = '<div class="send_message">' + strMessage + '</div>';
+                box = '<div class="box">' + mark + element + '</div>';
                 break;
 
             case 'receive':
-                element = '<td class="receive_message">' + strMessage + '</td>';
+                element = '<div class="receive_message">' + strMessage + '</div>';
+                box = '<div class="box">' + element + mark + '</div>';
                 break;
 
             default:
                 break;
         }
-
-        box = '<tr>' + mark + element + '</tr>';
         console.log(box);
 
-        $('tbody').append(box);    // リストの一番下に追加
-} );
+        $('#message-list').append(box);    // リストの一番下に追加
+});
