@@ -72,6 +72,22 @@ $('#regist_button').click(() => {
     }
 });
 
+$('#delete_button').click(() => {
+    //入力ダイアログからの文字列を格納する
+    
+    let id = prompt('削除するNGワードの番号を入力して下さい');
+
+    if(id) {
+        //カンマを付加
+        socket.emit('word delete', id);
+        console.log('registerd', id);
+        alert('NGワードが削除されました');
+    }
+    else {
+        alert('番号を入力して下さい');
+    }
+});
+
 $('#emotion-set').click(() => {
     let target = $(event.target).val();
     console.log(target);

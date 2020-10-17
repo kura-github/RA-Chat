@@ -5,6 +5,7 @@ const express = require( 'express' );
 const http = require( 'http' );
 const socketIO = require( 'socket.io' );
 const fs = require('fs');
+const jsonfile = require('jsonfile');
 
 //形態素解析用のモジュール
 const kuromoji = require('kuromoji');
@@ -55,9 +56,9 @@ const filtering = (word) => {
     //判定結果   true: 送信可能なメッセージ,  false: 送信出来ないメッセージ
     let result = true;
 
-    //NGワードファイルを読み込む(同期)
+    //NGワードファイルを読み込む
     try {
-        data = fs.readFileSync('./NG_word.txt', 'utf-8');
+        data = fs.readFileSync('./NG_word' + listNum + '.txt', 'utf-8');
         //カンマで分割して配列に格納
         wordArray = data.split(',');
     }
@@ -102,6 +103,7 @@ const filtering = (word) => {
     });
   
     // 形態素解析機を作るメソッド
+    /*
     builder.build((err, tokenizer) => {
         // 辞書がなかった際のエラー表示
         if(err) { 
@@ -112,8 +114,8 @@ const filtering = (word) => {
         var tokens = tokenizer.tokenize(word);
         //console.log(tokens);
     });
-
-    //calc_abusiveness(word);
+    */
+    calc_abusiveness(word);
 
     return result;
 };
@@ -121,32 +123,53 @@ const filtering = (word) => {
 //悪口度を算出する関数
 const calc_abusiveness = (word) => {
 
+    //web検索結果の件数を検索エンジンのページからスクレイピングする関数
     /*
-    const customSearch = google.customsearch("v1");
+    const hit = (w1, w2) => {
 
-    //非同期処理
-    async function search_keyword(event) {
+        //検索結果の件数を格納する変数
+        let hit_count = 0;
 
-        //htmlからキーワードを取ってくる
-        let keyword = "japan";
+        //検索する文字列を格納する変数
+        let query;
 
-        if (!keyword) return;
-            //非同期処理なので実行終了まで待つ
-        let text = await customSearch.cse.list({
+        //パラメータの数によってqueryの中身を変える
+        if(!w1) {
+            query = w2;
+        }
+        else if(!w2) {
+            query = w1;
+        }
+        else {
+            query = w1 + ' ' + w2;
+        }
+        
+        //検索を行う
+        
+        cheerio.fetch(searchEngineURL, {q: query})
+        .then((result) => {
+            //console.log(parseInt(result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1")));
+            hit_count = (result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1"));
+            console.log(hit_count);
+        })
+        .catch((err) => {
+            console.log(err);
+        })
+        .finally(() => {
+            console.log('done');
+        });
 
-            //APIキー
-            auth: "AIzaSyCxqRxy6CUssc1o9v31I10CvtlFXu73wMo",
+        return hit_count;
 
-            //カスタムエンジン名ID
-            cx: "eda774801274e7e9a",
 
-            //検索したいキーワード
-            q: keyword
-         });
+        let result = cheerio.fetchSync(searchEngineURL, {q: query});
+        
+        hit_count = result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1");
 
-        //結果表示
-        console.log(text);
-    }
+        console.log(hit_count);
+
+        return hit_count;
+    };
     */
 
     //C = Math.log(hit(w,wp) * hit(wn) / hit(w,wn) * hit(wp));  --> (1)
@@ -154,7 +177,6 @@ const calc_abusiveness = (word) => {
 
     //c = Math.log((hit(word, wp) * hit(wn)) / (hit(word, wn) * hit(wp)));
     c = Math.log(1190000 * 231000 / 4300000 * 40700000);
-    //c = Math.log(hit_array[0] * hit_array[1] / hit_array[2] * hit_array[3]);
     
     let f = 0;
     //f = a * Math.log(hit(wp) / hit(wn));
@@ -167,56 +189,12 @@ const calc_abusiveness = (word) => {
     console.log(c);
     console.log(f);
     console.log(SO_PMI);
-};
 
-//web検索結果の件数を検索エンジンのページからスクレイピングする関数
-const hit = (w1, w2) => {
-
-    //検索結果の件数を格納する変数
-    let hit_count = 0;
-
-    //検索する文字列を格納する変数
-    let query;
-
-    //パラメータの数によってqueryの中身を変える
-    if(!w1) {
-        query = w2;
-    }
-    else if(!w2) {
-        query = w1;
-    }
-    else {
-        query = w1 + ' ' + w2;
-    }
-    
-    //検索を行う
-    cheerio.fetch(searchEngineURL, {q: query})
-    .then((result) => {
-        //console.log(parseInt(result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1")));
-        hit_count = (result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1"));
-        console.log(hit_count);
-    })
-    .catch((err) => {
-        console.log(err);
-    })
-    .finally(() => {
-        console.log('done');
-    });
-
-    return hit_count;
-    /*
-    let result = cheerio.fetchSync(searchEngineURL, {q: query});
-    
-    hit_count = result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1");
-
-    console.log(hit_count);
-
-    return hit_count;
-    */
 };
 
 // グローバル変数
 let iCountUser = 0; // ユーザー数
+let messageCount = 0; //ユーザーが短時間に送信したメッセージをカウントする
 let typing = false; //入力中かどうか
 let socketTmp;
 
@@ -229,6 +207,7 @@ io.on('connection', (socket) => {
 
     let strNickname = '';	// コネクションごとで固有のニックネーム, イベントをまたいで使用される
     let room = '';
+    let listNum;
 
         // 切断時の処理
         // ・クライアントが切断したら、サーバー側では'disconnect'イベントが発生
@@ -249,7 +228,6 @@ io.on('connection', (socket) => {
                         strDate: strNow,
                         type: 'system'
                     };
-                
 
                     // 送信元含む全員に送信
                     socket.broadcast.emit( 'spread message', objMessage );
@@ -260,6 +238,7 @@ io.on('connection', (socket) => {
         // ・クライアント側のメッセージ送信時の「socket.emit( 'join', strNickname );」に対する処理
         socket.on('join', ( strNickname_ , joinRoom_) => {
                 room = joinRoom_;
+                listNum = joinRoom_;
                 socket.join(room);
 
                 //現在のsocketIDを格納
@@ -286,8 +265,29 @@ io.on('connection', (socket) => {
                     type: 'system'
                 };
 
+                //jsonファイルを読み込む
+                var messageList = Array();
+
+                messageList = JSON.parse(fs.readFileSync('message_list' + listNum + '.json','utf-8'));
+
+
+                /*
+                var messageList = jsonfile.readFileSync(('message_list' + listNum + '.json'), {
+                    encoding: 'utf-8',
+                    reviver: null,
+                    throws: true
+                });
+                */
+
+                //メッセージの件数分メッセージをクライアント側に表示させる
+                for (let i = 0; i < messageList.length; i++) {
+                    io.to(socketTmp).emit('spread message', messageList[i]);
+                }
+                
+
                 // 送信元含む全員に送信
                 io.to(room).emit( 'spread message', objMessage );
+
         });
 
         // 新しいメッセージ受信時の処理
@@ -327,6 +327,23 @@ io.on('connection', (socket) => {
 
                     //ルーム全員に送信
                     io.to(room).emit('spread message', objMessage);
+
+                    //jsonファイルにメッセージを書き込む
+
+                    messageList.push(objMessage);
+                    messageList.push(']');
+                    
+
+                    fs.writeFileSync('message_list' + listNum + '.json', JSON.stringify(messageList));
+                    /*
+                    jsonfile.writeFileSync(('message_list' + listNum + '.json'), objMessage, {
+                        encoding: 'utf-8',
+                        replacer: null,
+                        spaces: null,
+                        flag: 'a'
+                    });
+                    */
+
                 }
                 else {
                     //NGワードの場合
@@ -341,8 +358,9 @@ io.on('connection', (socket) => {
                     };
 
                     //警告メッセージを送信元に送信
-                    io.to(socket.id).emit('spread message', sysMessage);
+                    io.to(socket.id).emit('spread message', sysMessage);   
                 }
+                
         });
 
         //メッセージ入力中の処理
@@ -377,6 +395,25 @@ io.on('connection', (socket) => {
                     console.log('write end');
                 }
             });
+        });
+
+        socket.on('word delete', (id) => {
+            let wordArray = Array();
+            let data;
+
+            try {
+                data = fs.readFileSync('./NG_word' + listNum + '.txt', 'utf-8');
+                //カンマで分割して配列に格納
+                wordArray = data.split(',');
+
+                wordArray.splice(id,1); //idで指定された要素を削除
+
+                fs.writeFileSync('./NG_word' + listNum + '.txt', wordArray);
+            }
+            catch(e) {
+                console.log(e);
+            }
+            
         });
 });
 
