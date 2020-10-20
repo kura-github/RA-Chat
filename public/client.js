@@ -38,7 +38,7 @@ $( 'form' ).submit(() => {
 
         if( $('#input_message').val()) {
             // サーバーに、イベント名'new message' で入力テキストを送信
-            socket.emit('new message', $( '#input_message').val(), $('input[name="emotion"]:checked').val());
+            socket.emit('new message', $( '#input_message').val(), $('input[name="emotion"]:checked').val(), $('#room').val());
 
             $('#input_message').val('');    // テキストボックスを空にする
         }
@@ -63,7 +63,7 @@ $('#regist_button').click(() => {
     if(word) {
         //カンマを付加
         word += ',';
-        socket.emit('word regist', word);
+        socket.emit('word regist', word, $('room').text());
         console.log('registerd', word);
         alert('NGワードが追加されました');
     }
@@ -79,13 +79,18 @@ $('#delete_button').click(() => {
 
     if(id) {
         //カンマを付加
-        socket.emit('word delete', id);
-        console.log('registerd', id);
+        socket.emit('word delete', id, $('#room').text());
+        console.log('deleted', id);
         alert('NGワードが削除されました');
     }
     else {
         alert('番号を入力して下さい');
     }
+});
+
+$('#view_button').click(() => {
+    socket.emit('view word', $('#room').text());
+    console.log($('#room').val());
 });
 
 $('#emotion-set').click(() => {
@@ -199,4 +204,20 @@ socket.on('spread message', ( objMessage ) => {
         console.log(box);
 
         $('#message-list').append(box);    // リストの一番下に追加
+});
+
+
+socket.on('view NG_word', (wordArray) => {
+
+    console.log('now');
+
+    let message = '';
+
+    for (let i = 0; i < wordArray.length - 1; i++) {
+        message += i + 1 + '. ';
+        message += wordArray[i];
+        message += '\n';
+    }
+
+    alert('現在のNGワード\n' + message);
 });

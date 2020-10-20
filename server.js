@@ -42,7 +42,7 @@ const makeTimeString = (time) => {
 };
 
 //NGワードとの文字列比較を行う
-const filtering = (word) => {
+const filtering = (word, roomNum) => {
 
     //NGワードを格納する配列
     let wordArray = Array();
@@ -58,7 +58,7 @@ const filtering = (word) => {
 
     //NGワードファイルを読み込む
     try {
-        data = fs.readFileSync('./NG_word' + listNum + '.txt', 'utf-8');
+        data = fs.readFileSync('./NG_word' + roomNum + '.txt', 'utf-8');
         //カンマで分割して配列に格納
         wordArray = data.split(',');
     }
@@ -124,11 +124,11 @@ const filtering = (word) => {
 const calc_abusiveness = (word) => {
 
     //web検索結果の件数を検索エンジンのページからスクレイピングする関数
-    /*
+
     const hit = (w1, w2) => {
 
         //検索結果の件数を格納する変数
-        let hit_count = 0;
+        var hit_count;
 
         //検索する文字列を格納する変数
         let query;
@@ -159,10 +159,7 @@ const calc_abusiveness = (word) => {
             console.log('done');
         });
 
-        return hit_count;
-
-
-        let result = cheerio.fetchSync(searchEngineURL, {q: query});
+        //let result = cheerio.fetchSync(searchEngineURL, {q: query});
         
         hit_count = result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1");
 
@@ -170,13 +167,12 @@ const calc_abusiveness = (word) => {
 
         return hit_count;
     };
-    */
 
     //C = Math.log(hit(w,wp) * hit(wn) / hit(w,wn) * hit(wp));  --> (1)
     let c = 0;
 
-    //c = Math.log((hit(word, wp) * hit(wn)) / (hit(word, wn) * hit(wp)));
-    c = Math.log(1190000 * 231000 / 4300000 * 40700000);
+    c = Math.log((hit(word, wp) * hit(wn)) / (hit(word, wn) * hit(wp)));
+    //c = Math.log(1190000 * 231000 / 4300000 * 40700000);
     
     let f = 0;
     //f = a * Math.log(hit(wp) / hit(wn));
@@ -207,7 +203,7 @@ io.on('connection', (socket) => {
 
     let strNickname = '';	// コネクションごとで固有のニックネーム, イベントをまたいで使用される
     let room = '';
-    let listNum;
+    let roomNum;
 
         // 切断時の処理
         // ・クライアントが切断したら、サーバー側では'disconnect'イベントが発生
@@ -238,7 +234,7 @@ io.on('connection', (socket) => {
         // ・クライアント側のメッセージ送信時の「socket.emit( 'join', strNickname );」に対する処理
         socket.on('join', ( strNickname_ , joinRoom_) => {
                 room = joinRoom_;
-                listNum = joinRoom_;
+                roomNum = joinRoom_;
                 socket.join(room);
 
                 //現在のsocketIDを格納
@@ -268,7 +264,7 @@ io.on('connection', (socket) => {
                 //jsonファイルを読み込む
                 var messageList = Array();
 
-                messageList = JSON.parse(fs.readFileSync('message_list' + listNum + '.json','utf-8'));
+                messageList = JSON.parse(fs.readFileSync('message_list' + roomNum + '.json','utf-8'));
 
 
                 /*
@@ -292,7 +288,7 @@ io.on('connection', (socket) => {
 
         // 新しいメッセージ受信時の処理
         // ・クライアント側のメッセージ送信時の「socket.emit( 'new message', $( '#input_message' ).val() );」に対する処理
-        socket.on('new message', (strMessage, emoji) => {
+        socket.on('new message', (strMessage, emoji, roomNum) => {
                 typing = false;
                 console.log( 'new message', strMessage );
                 console.log('emotion:', emoji);
@@ -312,7 +308,7 @@ io.on('connection', (socket) => {
 
                 //judge : 戻り値の判定用の変数
                 //true -> NGワードでない, false -> NGワード
-                let judge = filtering(strMessage);
+                let judge = filtering(strMessage, roomNum);
 
                 if(judge) {
                     //NGワードではない場合
@@ -334,7 +330,7 @@ io.on('connection', (socket) => {
                     messageList.push(']');
                     
 
-                    fs.writeFileSync('message_list' + listNum + '.json', JSON.stringify(messageList));
+                    fs.writeFileSync('message_list' + roomNum + '.json', JSON.stringify(messageList));
                     /*
                     jsonfile.writeFileSync(('message_list' + listNum + '.json'), objMessage, {
                         encoding: 'utf-8',
@@ -384,8 +380,8 @@ io.on('connection', (socket) => {
         });
 
         //NGワード登録時の処理
-        socket.on('word regist', (word) => {
-            fs.appendFile('./NG_word.txt', word, (error, data) => {
+        socket.on('word regist', (word, roomNum) => {
+            fs.appendFile('./NG_word' + roomNum + '.txt', word, (error, data) => {
                 console.log(word);
                 if(error) {
                     console.log(error);
@@ -397,23 +393,40 @@ io.on('connection', (socket) => {
             });
         });
 
-        socket.on('word delete', (id) => {
+        socket.on('word delete', (id, roomNum) => {
             let wordArray = Array();
             let data;
 
             try {
-                data = fs.readFileSync('./NG_word' + listNum + '.txt', 'utf-8');
+                data = fs.readFileSync('./NG_word' + roomNum + '.txt', 'utf-8');
                 //カンマで分割して配列に格納
                 wordArray = data.split(',');
 
-                wordArray.splice(id,1); //idで指定された要素を削除
+                wordArray.splice(id-1,1); //idで指定された要素を削除(配列の添え字を考慮する)
 
-                fs.writeFileSync('./NG_word' + listNum + '.txt', wordArray);
+                fs.writeFileSync('./NG_word' + roomNum + '.txt', wordArray);
             }
             catch(e) {
                 console.log(e);
             }
             
+        });
+
+        //現在のNGワードの参照
+        socket.on('view word', (roomNum) => {
+            let wordArray = Array();
+            let data;
+            
+            try {
+                data = fs.readFileSync('./NG_word' + roomNum + '.txt', 'utf-8');
+                //カンマで分割して配列に格納
+                wordArray = data.split(',');
+
+                io.to(roomNum).emit('view NG_word', wordArray);
+            }
+            catch(e) {
+                console.log(e);
+            }
         });
 });
 
