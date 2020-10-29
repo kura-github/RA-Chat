@@ -1,2 +1,2 @@
-#kuromoji.js関連のモジュールは含めない
+#node.jsのモジュールは含めない
 node_modules/

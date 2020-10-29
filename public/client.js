@@ -38,7 +38,7 @@ $( 'form' ).submit(() => {
 
         if( $('#input_message').val()) {
             // サーバーに、イベント名'new message' で入力テキストを送信
-            socket.emit('new message', $( '#input_message').val(), $('input[name="emotion"]:checked').val(), $('#room').val());
+            socket.emit('new message', $( '#input_message').val(), $('input[name="emotion"]:checked').val(), $('#room').text());
 
             $('#input_message').val('');    // テキストボックスを空にする
         }
@@ -52,7 +52,7 @@ $('#leave_button').click(() => {
 });
 
 $('#input_message').on('input', () => {
-    socket.emit('typing');
+    socket.emit('typing', $('#room').text());
 });
 
 $('#regist_button').click(() => {
