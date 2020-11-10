@@ -12,6 +12,7 @@ const kuromoji = require('kuromoji');
 
 //スクレイピング用のモジュール
 const cheerio = require('cheerio-httpcli');
+const { json } = require('express');
 
 //スクレイピングする検索エンジンのURL(Google)
 const searchEngineURL = 'https://www.google.co.jp/search';
@@ -25,6 +26,7 @@ const io = socketIO( server );
 const PORT = process.env.PORT || 3000;
 const SYSTEMNICKNAME = '管理人';
 const WARNING = '特定の単語が含まれているため、その内容のメッセージは送信出来ません';
+const LIMIT_OVER = 'メッセージ数の上限に達したため、1分後まで送信出来ません';
 const wp = '振替';  //非悪口極性の単語
 const wn = '消えろ'; //悪口極性の単語
 const a = 0.9;  //重み定数
@@ -122,9 +124,11 @@ const filtering = async (word, roomNum) => {
     */
 
     //算出した悪口度が0以下であれば悪口単語ではない
+    /*
     if(await calc_abusiveness(word) <= 0) {
         result = false;
     }
+    */
 
     return result;
 };
@@ -136,12 +140,22 @@ const calc_abusiveness = async (word) => {
     
     //c = Math.log((48800000 * 2620000) / (2970000 * 2970000));
     //c = Math.log(ansArray[0] * ansArray[1] / ansArray[2] * ansArray[3]);
-    c = Math.log(await hit(word, wp) * await hit(wp) / await hit(word, wn) * await hit(wn));
+
+    let h1,h2,h3,h4,h5,h6;
+
+    h1 = await hit(word, wp);
+    h2 = await hit(wp);
+    h3 = await hit(word, wn);
+    h4 = await hit(wn);
+    h5 = await hit(wp);
+    h6 = await hit(wn);
+
+    c = Math.log((h1 * h2) / (h3 * h4));
     
     let f = 0;
 
     //f = a * Math.log(45400000 / 45400000);
-    f = a * Math.log(await hit(wp) / await hit(wn));
+    f = a * Math.log( h5 / h6);
     //f = a * Math.log(ansArray[4] / ansArray[5]);
 
     //悪口度
@@ -149,10 +163,12 @@ const calc_abusiveness = async (word) => {
 
     SO_PMI = c + f;
 
-    console.log(c);
-    console.log(f);
-    console.log(SO_PMI);
-
+    console.log(c); //NaN
+    console.log(f); //NaN
+    console.log(SO_PMI); //NaN
+    
+    console.log(h1,h2,h3,h4,h5,h6);
+    
     return SO_PMI;
 };
 
@@ -191,30 +207,27 @@ const hit = async (w1, w2) => {
 
     return hit_count;
     */
+
     
-    cheerio.fetch(searchEngineURL, {q: query})
-    .then((result) => {
-        //スクレイピングした検索件数を数値のみの形式に置き換えて格納
-        hit_count = result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1");
+    let result = await cheerio.fetch(searchEngineURL, {q: query}).catch(() => '');
+    //スクレイピングした検索件数を数値のみの形式に置き換えて格納
 
-        console.log(hit_count);
-    })
-    .catch((err) => {
-        console.log(err);
-    })
-    .finally(() => {
-        console.log('done');
-        return hit_count;
-    });
 
+
+    hit_count = result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1");
+
+    console.log(hit_count);
+
+    return hit_count;
 };
 
 // グローバル変数
 let iCountUser = 0; // ユーザー数
+let limit = false;
 let messageCount = 0; //ユーザーが短時間に送信したメッセージをカウントする
 let typing = false; //入力中かどうか
 let socketTmp; //ソケットIDの一時変数
-let socketArray = Array(); //ユーザのソケットIDを保持しておく配列
+let socketList = {}; //ユーザのソケットIDを保持しておく配列
 
 // 接続時の処理
 // サーバーとクライアントの接続が確立すると
@@ -222,6 +235,22 @@ let socketArray = Array(); //ユーザのソケットIDを保持しておく配�
 // クライアント側で、'connect'イベントが発生する
 
 io.on('connection', (socket) => {
+
+    //1分後にメッセージカウンタをリセットする
+    var timer = setInterval(() => {
+        messageCount = 0;
+        
+        if(limit === false) {
+            limit = true;
+        }
+        else {
+            limit = false;
+        }
+
+        console.log('Reseted');
+
+    }, 60000);
+
     console.log('connection');
 
     let strNickname = '';	// コネクションごとで固有のニックネーム, イベントをまたいで使用される
@@ -233,7 +262,13 @@ io.on('connection', (socket) => {
         socket.on('disconnect', () => {
             console.log( 'disconnect' );
 
+            clearInterval(timer);
+
             if(strNickname) {
+
+                    //ユーザのソケットIDをオブジェクトから削除
+                    delete socketList[strNickname];
+
                     // ユーザー数の更新
                     iCountUser--;
 
@@ -269,8 +304,7 @@ io.on('connection', (socket) => {
                 // コネクションごとで固有のニックネームに設定
                 strNickname = strNickname_;
 
-
-                socketArray[iCountUser] = socket.id;
+                socketList[strNickname] = socket.id;
                 
                 // ユーザー数の更新
                 iCountUser++;
@@ -278,7 +312,6 @@ io.on('connection', (socket) => {
                 // メッセージオブジェクトに現在時刻を追加
                 const strNow = makeTimeString(new Date());
 
-                
                 // システムメッセージの作成
                 const objMessage = {
                     strNickname: SYSTEMNICKNAME,
@@ -288,28 +321,21 @@ io.on('connection', (socket) => {
                 };
 
                 //jsonファイルを読み込む
-                var messageList = Array();
+                let messageArray = Array();
 
                 let dir = 'message_list' + roomNum + '.json';
 
-                messageList = JSON.parse(fs.readFileSync(dir,'utf-8'));
+                messageArray = jsonfile.readFileSync(dir,'utf-8');
 
+                console.log(messageArray);
 
-                /*
-                var messageList = jsonfile.readFileSync(('message_list' + listNum + '.json'), {
-                    encoding: 'utf-8',
-                    reviver: null,
-                    throws: true
-                });
-                */
-
-                //メッセージの件数分メッセージをクライアント側に表示させる
-                for (let i = 0; i < messageList.length; i++) {
-                    io.to(socketTmp).emit('spread message', messageList[i]);
+                //件数分のメッセージをクライアント側に表示させる
+                for (let i = 0; i < messageArray.length; i++) {
+                    io.to(socketTmp).emit('spread message', messageArray[i]);
                 }
 
-                // 送信元含む全員に送信
-                io.to(room).emit( 'spread message', objMessage );
+                //入室時のメッセージを全員に送信
+                io.to(room).emit('spread message', objMessage);
         });
 
         // 新しいメッセージ受信時の処理
@@ -349,12 +375,66 @@ io.on('connection', (socket) => {
                             type: messageType,
                             emotion: emoji
                         };
-    
-                        //ルーム全員に送信
-                        io.to(room).emit('spread message', objMessage);
-    
-                        //メッセージをjsonファイルに追記する(修正中)
-    
+
+                        //メンションされたメッセージかどうかを調べるための正規表現
+                        //メンションの書式: @ユーザ名 メッセージ
+                        let pattern = new RegExp(/^@\w*|\p{Hiragana}|\p{Katakana}|\p{Han}\s\w*|\p{Hiragana}|\p{Katakana}|\p{Han}$/);
+
+                        //メンションされたメッセージかつ
+                        //メッセージ送信数が上限範囲内の場合
+                        if(pattern.test(strMessage) === true) {
+                            console.log('mention');
+
+                            if(limit === false) {
+                                messageCount++;
+                                console.log(messageCount);
+                            }
+
+                            //1分間に同じユーザへのメッセージが10件以上送信された場合
+                            if(messageCount >= 10) {
+
+                                messageType = 'system';
+                        
+                                const sysMessage = {
+                                    strNickname: SYSTEMNICKNAME,
+                                    strMessage: LIMIT_OVER, //警告メッセージの定数
+                                    strDate: strNow,
+                                    type: messageType
+                                };
+
+                                io.to(socket.id).emit('spread message', sysMessage);
+                            }
+
+                            console.log(limit);
+
+                            //ユーザ名を分割して取り出す
+                            let mention = strMessage.split(/\s/);
+                            mention = mention[0].substring(1);
+                            console.log(mention);
+
+                            //対象ユーザのソケットIDを格納する
+                            let targetUser = socketList[mention];
+
+                            //対象ユーザにメッセージを送信する
+                            io.to(targetUser).emit('spread message', objMessage);
+                            io.to(socket.id).emit('spread message', objMessage);
+                        }
+                        else {
+                            //ルーム全員に送信
+                            io.to(room).emit('spread message', objMessage);
+                        }
+
+                        //ルーム番号によってファイル名を指定
+                        let dir = './message_list' + roomNum + '.json';
+
+                        //メッセージをテキストファイルに書き込む
+                        try {
+                            jsonfile.appendFileSync(dir, JSON.stringify(objMessage));
+                            console.log(objMessage);
+                        }
+                        catch(e) {
+                            console.log(e);
+                        }
     
                     }
                     else {
@@ -440,7 +520,8 @@ io.on('connection', (socket) => {
 
             //ルーム番号によってディレクトリを決定
             let dir = './NG_word' + roomNum + '.txt';
-            
+
+            //NGワードファイルを読み込む
             try {
                 data = fs.readFileSync(dir, 'utf-8');
                 //カンマで分割して配列に格納

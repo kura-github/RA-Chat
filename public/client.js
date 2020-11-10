@@ -16,9 +16,6 @@ $( '#join-form' ).submit(() => {
 
         if($('#input_nickname').val())
         {
-            // サーバーに、イベント名'join' で入力テキストを送信
-
-            //$("#pgss").css({'width':'100%'});
             
             socket.emit( 'join', $( '#input_nickname' ).val() , $('#input_room').val());
 
@@ -97,6 +94,7 @@ $('#emotion-set').click(() => {
     let target = $(event.target).val();
     console.log(target);
 
+    //クリックしたボタンによってラジオボタンの値を変更する
     switch (target) {
         case 'laugh':
             $('input:radio[name="emotion"]').val(["laugh"]);
@@ -122,13 +120,19 @@ $('#emotion-set').click(() => {
             break;
     }
 
-    $('#laugh').css('opacity', 0.3);
+    let tmp = '#' + target;
 
+    $(tmp).css('opacity', 0.3);
+
+    /*
     $('input:radio[name="emotion"]').each((key, value) => {
-        if($('input:radio[name="emotion"]').is(':checked') === false) {
-            $('#cry').css('opacity', 1);
+        //let current = '#' + $('input:radio[name="emotion"]').keys(key);
+
+        if(current !== target) {
+            $(current).css('opacity', 1);
         }
     });
+    */
 });
 
 // サーバーからのメッセージ拡散に対する処理
@@ -206,10 +210,7 @@ socket.on('spread message', ( objMessage ) => {
         $('#message-list').append(box);    // リストの一番下に追加
 });
 
-
 socket.on('view NG_word', (wordArray) => {
-
-    console.log('now');
 
     let message = '';
 
