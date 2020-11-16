@@ -13,6 +13,7 @@ const kuromoji = require('kuromoji');
 //スクレイピング用のモジュール
 const cheerio = require('cheerio-httpcli');
 const { json } = require('express');
+const { count } = require('console');
 
 //スクレイピングする検索エンジンのURL(Google)
 const searchEngineURL = 'https://www.google.co.jp/search';
@@ -213,7 +214,6 @@ const hit = async (w1, w2) => {
     //スクレイピングした検索件数を数値のみの形式に置き換えて格納
 
 
-
     hit_count = result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1");
 
     console.log(hit_count);
@@ -228,6 +228,13 @@ let messageCount = 0; //ユーザーが短時間に送信したメッセージ�
 let typing = false; //入力中かどうか
 let socketTmp; //ソケットIDの一時変数
 let socketList = {}; //ユーザのソケットIDを保持しておく配列
+/*socketList = {
+    name : ニックネーム,(strNickname),
+    id : ソケットID(socket.id),
+    msCount : メッセージの送信数(0~10),
+    isLocked: true or false
+}
+*/
 
 // 接続時の処理
 // サーバーとクライアントの接続が確立すると
@@ -237,7 +244,7 @@ let socketList = {}; //ユーザのソケットIDを保持しておく配列
 io.on('connection', (socket) => {
 
     //1分後にメッセージカウンタをリセットする
-    var timer = setInterval(() => {
+    let timer = setInterval(() => {
         messageCount = 0;
         
         if(limit === false) {
@@ -305,6 +312,7 @@ io.on('connection', (socket) => {
                 strNickname = strNickname_;
 
                 socketList[strNickname] = socket.id;
+                socketList[msCount] = 0;
                 
                 // ユーザー数の更新
                 iCountUser++;
@@ -341,11 +349,12 @@ io.on('connection', (socket) => {
         // 新しいメッセージ受信時の処理
         // ・クライアント側のメッセージ送信時の「socket.emit( 'new message', $( '#input_message' ).val() );」に対する処理
         socket.on('new message', (strMessage, emoji, roomNum) => {
+                //入力が終了しているのでtypingをfalseにする
                 typing = false;
                 console.log( 'new message', strMessage );
                 console.log('emotion:', emoji);
 
-                // 現在時刻の文字列の作成
+                // 現在時刻の文字列の作成する
                 const strNow = makeTimeString( new Date() );
 
                 //送信側か受信側かを分ける
@@ -427,7 +436,7 @@ io.on('connection', (socket) => {
                         //ルーム番号によってファイル名を指定
                         let dir = './message_list' + roomNum + '.json';
 
-                        //メッセージをテキストファイルに書き込む
+                        //メッセージにjsonファイルに書き込む
                         try {
                             jsonfile.appendFileSync(dir, JSON.stringify(objMessage));
                             console.log(objMessage);
@@ -452,7 +461,6 @@ io.on('connection', (socket) => {
                         //警告メッセージを送信元に送信
                         io.to(socket.id).emit('spread message', sysMessage);   
                     }
-
                 })();
         });
 

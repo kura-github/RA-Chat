@@ -122,15 +122,20 @@ $('#emotion-set').click(() => {
 
     let tmp = '#' + target;
 
+    $('input:radio[name="emotion"]').prop('checked', false);
+
     $(tmp).css('opacity', 0.3);
 
     /*
     $('input:radio[name="emotion"]').each((key, value) => {
-        //let current = '#' + $('input:radio[name="emotion"]').keys(key);
+        let current = '#' + $('input:radio[name="emotion"]').val();
+
+        console.log(current);
 
         if(current !== target) {
             $(current).css('opacity', 1);
         }
+
     });
     */
 });
