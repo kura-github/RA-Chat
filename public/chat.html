@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"/>
+    <link rel="icon" href="logo.png" type="image/png">
+    <link rel="stylesheet" href="./chat.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <title>RA-chat</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+</head>
+<body>
+
+  <div id="chat-screen">
+    <div id="message-list">
+        <!--  ここにメッセージが動的に追加される  -->
+    </div>
+
+    <div id="emotion-value">
+        <input type="radio" name="emotion" value="laugh">
+        <input type="radio" name="emotion" value="smile" checked>
+        <input type="radio" name="emotion" value="surprise">
+        <input type="radio" name="emotion" value="angry">
+        <input type="radio" name="emotion" value="cry">
+    </div>
+
+    <div id="emotion-set">
+        <button id="laugh" value="laugh"></button>
+        <button id="smile" value="smile"></button>
+        <button id="surprise" value="surprise"></button>
+        <button id="angry" value="angry"></button>
+        <button id="cry" value="cry"></button>
+    </div>
+
+    <form id="chat-form" action="">
+        Nickname : <span id="nickname"></span> Room : <span id="room"></span>
+        <br>
+        <input type="text" id="input_message" autocomplete="off" placeholder="Message"/>
+        <button type="submit" class="btn-xs btn-success" id="send_button">send</button><br><br>
+
+        <button id="regist_button">regist</button>
+        <button id="delete_button">delete</button>
+        <button id="view_button">view</button>
+        <button id="leave_button">exit</button>
+    </form>
+  </div>
+
+  <script src="client.js"></script>
+  
+</body>
+</html>

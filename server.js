@@ -6,6 +6,7 @@ const http = require( 'http' );
 const socketIO = require( 'socket.io' );
 const fs = require('fs');
 const jsonfile = require('jsonfile');
+const extra = require('fs-extra');
 
 //形態素解析用のモジュール
 const kuromoji = require('kuromoji');
@@ -125,11 +126,9 @@ const filtering = async (word, roomNum) => {
     */
 
     //算出した悪口度が0以下であれば悪口単語ではない
-    /*
     if(await calc_abusiveness(word) <= 0) {
         result = false;
     }
-    */
 
     return result;
 };
@@ -152,6 +151,8 @@ const calc_abusiveness = async (word) => {
     h6 = await hit(wn);
 
     c = Math.log((h1 * h2) / (h3 * h4));
+
+    console.log('result:', h1,h2);
     
     let f = 0;
 
@@ -254,7 +255,7 @@ io.on('connection', (socket) => {
             limit = false;
         }
 
-        console.log('Reseted');
+        console.log('Timer Reseted');
 
     }, 60000);
 
@@ -312,7 +313,7 @@ io.on('connection', (socket) => {
                 strNickname = strNickname_;
 
                 socketList[strNickname] = socket.id;
-                socketList[msCount] = 0;
+                //socketList[msCount] = 0;
                 
                 // ユーザー数の更新
                 iCountUser++;
@@ -438,7 +439,17 @@ io.on('connection', (socket) => {
 
                         //メッセージにjsonファイルに書き込む
                         try {
-                            jsonfile.appendFileSync(dir, JSON.stringify(objMessage));
+                            let data = fs.readFileSync(dir, 'utf-8');
+
+                            let json = JSON.parse(data);
+                            json.push(objMessage);
+
+                            fs.writeFileSync(dir, JSON.stringify(json), {
+                                encoding: 'utf-8', 
+                                replacer: null, 
+                                spaces: null
+                            });
+
                             console.log(objMessage);
                         }
                         catch(e) {

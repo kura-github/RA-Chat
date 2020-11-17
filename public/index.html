@@ -6,6 +6,8 @@
     <link rel="icon" href="logo.png" type="image/png">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <title>RA-chat</title>
 
 </head>
@@ -18,6 +20,11 @@
             <div id="join-screen">
 
                 <form id="join-form" action="">
+
+                    <div id="logo">
+                        <img src="./logo.png" alt="logo"/>
+                        <h4>RA-chat</h4>
+                    </div>
                     <select id="input_room">
                         <option value="01">Room01</option>
                         <option value="02">Room02</option>
@@ -26,19 +33,14 @@
                         <option value="05">Room05</option>
                     </select>
                     <input type="text" id="input_nickname" autocomplete="off" placeholder="Nickname"/><button type="submit" class="btn-xs btn-dark">Join</button>
-                    
                 </form>
             </div>
 
             <div id="chat-screen">
                 <div id="message-list">
-                    <!--
-                    <table border="1px">
-                        <tbody></tbody>
-                    </table>
-                    -->
+                    <!--  ここにメッセージが動的に追加される  -->
                 </div>
-
+            
                 <div id="emotion-value">
                     <input type="radio" name="emotion" value="laugh">
                     <input type="radio" name="emotion" value="smile" checked>
@@ -46,7 +48,7 @@
                     <input type="radio" name="emotion" value="angry">
                     <input type="radio" name="emotion" value="cry">
                 </div>
-
+            
                 <div id="emotion-set">
                     <button id="laugh" value="laugh"></button>
                     <button id="smile" value="smile"></button>
@@ -54,13 +56,13 @@
                     <button id="angry" value="angry"></button>
                     <button id="cry" value="cry"></button>
                 </div>
-
+            
                 <form id="chat-form" action="">
                     Nickname : <span id="nickname"></span> Room : <span id="room"></span>
                     <br>
                     <input type="text" id="input_message" autocomplete="off" placeholder="Message"/>
                     <button type="submit" class="btn-xs btn-success" id="send_button">send</button><br><br>
-
+            
                     <button id="regist_button">regist</button>
                     <button id="delete_button">delete</button>
                     <button id="view_button">view</button>
@@ -69,10 +71,7 @@
             </div>
         </div>
     </div>
-
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-    <script src="client.js"></script>
+        <script src="client.js"></script>
     
 </body>
 </html>

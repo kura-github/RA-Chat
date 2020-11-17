@@ -21,8 +21,10 @@ $( '#join-form' ).submit(() => {
 
             $( '#nickname' ).html( $( '#input_nickname' ).val() );
             $('#room').html($('#input_room').val());
-            $( '#join-screen' ).hide();
-            $( '#chat-screen' ).show();
+
+            
+            $('#join-screen').hide();
+            $('#chat-screen').show();
         }
 
         return false;   // フォーム送信はしない
@@ -39,13 +41,20 @@ $( 'form' ).submit(() => {
 
             $('#input_message').val('');    // テキストボックスを空にする
         }
+
         return false;   // フォーム送信はしない
 });
 
 $('#leave_button').click(() => {
     console.log('leaved');
     socket.emit('disconnect');
-    location.href = 'index.html';
+
+    let ans = confirm('このチャットルームを退室しますか?');
+
+    if(ans) {
+        location.href = 'index.html';
+    }
+    
 });
 
 $('#input_message').on('input', () => {
