@@ -15,6 +15,9 @@ const kuromoji = require('kuromoji');
 const cheerio = require('cheerio-httpcli');
 const { json } = require('express');
 const { count } = require('console');
+const { exit } = require('process');
+const { NODATA } = require('dns');
+const { stringify } = require('querystring');
 
 //スクレイピングする検索エンジンのURL(Google)
 const searchEngineURL = 'https://www.google.co.jp/search';
@@ -126,7 +129,11 @@ const filtering = async (word, roomNum) => {
     */
 
     //算出した悪口度が0以下であれば悪口単語ではない
-    if(await calc_abusiveness(word) <= 0) {
+
+    let waruguchido = await calc_abusiveness(word);
+    console.log(waruguchido);
+
+    if(waruguchido >= 0) {
         result = false;
     }
 
@@ -150,9 +157,7 @@ const calc_abusiveness = async (word) => {
     h5 = await hit(wp);
     h6 = await hit(wn);
 
-    c = Math.log((h1 * h2) / (h3 * h4));
-
-    console.log('result:', h1,h2);
+    c = Math.log(h1 * h2 / h3 * h4);
     
     let f = 0;
 
@@ -165,13 +170,13 @@ const calc_abusiveness = async (word) => {
 
     SO_PMI = c + f;
 
-    console.log(c); //NaN
-    console.log(f); //NaN
-    console.log(SO_PMI); //NaN
+    console.log(c);
+    console.log(f);
+    console.log(SO_PMI * 0.01);
     
     console.log(h1,h2,h3,h4,h5,h6);
     
-    return SO_PMI;
+    return SO_PMI * 0.01;
 };
 
 //web検索結果の件数を検索エンジンのページからスクレイピングする関数
@@ -215,25 +220,30 @@ const hit = async (w1, w2) => {
     //スクレイピングした検索件数を数値のみの形式に置き換えて格納
 
 
-    hit_count = result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1");
+    let tmp = result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1");
 
-    console.log(hit_count);
+    hit_count = parseInt(tmp.replace(/,/g, ''), 10);
 
     return hit_count;
 };
 
 // グローバル変数
 let iCountUser = 0; // ユーザー数
-let limit = false;
+let limit = false; //タイマーの上限値であるかどうか
 let messageCount = 0; //ユーザーが短時間に送信したメッセージをカウントする
 let typing = false; //入力中かどうか
 let socketTmp; //ソケットIDの一時変数
-let socketList = {}; //ユーザのソケットIDを保持しておく配列
-/*socketList = {
+let socketList = {}; //ユーザのソケットIDを保持しておくオブジェクト
+/*
+socketList = {
     name : ニックネーム,(strNickname),
     id : ソケットID(socket.id),
-    msCount : メッセージの送信数(0~10),
-    isLocked: true or false
+}
+*/
+let roomList = {};; //ルーム名とそのルームのメッセージ送信の可否を保持するオブジェクト
+/*
+roomList = {
+    roomNum: true or false, 例: 01 : true   (ルーム01は現在メッセージ送信が出来る)
 }
 */
 
@@ -350,6 +360,14 @@ io.on('connection', (socket) => {
         // 新しいメッセージ受信時の処理
         // ・クライアント側のメッセージ送信時の「socket.emit( 'new message', $( '#input_message' ).val() );」に対する処理
         socket.on('new message', (strMessage, emoji, roomNum) => {
+                
+
+                //メッセージ送信がロックされているルームの場合は送信しない
+                if(roomList[roomNum] === true) {
+                    //処理を中断
+                    exit;
+                }
+
                 //入力が終了しているのでtypingをfalseにする
                 typing = false;
                 console.log( 'new message', strMessage );
@@ -390,8 +408,7 @@ io.on('connection', (socket) => {
                         //メンションの書式: @ユーザ名 メッセージ
                         let pattern = new RegExp(/^@\w*|\p{Hiragana}|\p{Katakana}|\p{Han}\s\w*|\p{Hiragana}|\p{Katakana}|\p{Han}$/);
 
-                        //メンションされたメッセージかつ
-                        //メッセージ送信数が上限範囲内の場合
+                        //メンションされたメッセージの場合
                         if(pattern.test(strMessage) === true) {
                             console.log('mention');
 
@@ -430,6 +447,8 @@ io.on('connection', (socket) => {
                             io.to(socket.id).emit('spread message', objMessage);
                         }
                         else {
+                            //メンションされていないメッセージの場合
+
                             //ルーム全員に送信
                             io.to(room).emit('spread message', objMessage);
                         }
@@ -437,7 +456,7 @@ io.on('connection', (socket) => {
                         //ルーム番号によってファイル名を指定
                         let dir = './message_list' + roomNum + '.json';
 
-                        //メッセージにjsonファイルに書き込む
+                        //メッセージをjsonファイルに書き込む
                         try {
                             let data = fs.readFileSync(dir, 'utf-8');
 
@@ -458,8 +477,8 @@ io.on('connection', (socket) => {
     
                     }
                     else {
+
                         //NGワードの場合
-    
                         messageType = 'system';
                         
                         const sysMessage = {
@@ -493,6 +512,7 @@ io.on('connection', (socket) => {
 
                 io.to(roomNum).emit('spread message', objMessage);
             }
+
         });
 
         //NGワード登録時の処理

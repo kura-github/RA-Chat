@@ -56,7 +56,7 @@ $('#leave_button').click(() => {
     }
     
 });
-
+    
 $('#input_message').on('input', () => {
     socket.emit('typing', $('#room').text());
 });
@@ -73,9 +73,7 @@ $('#regist_button').click(() => {
         console.log('registerd', word);
         alert('NGワードが追加されました');
     }
-    else {
-        alert('ワードを入力して下さい');
-    }
+
 });
 
 $('#delete_button').click(() => {
@@ -89,9 +87,7 @@ $('#delete_button').click(() => {
         console.log('deleted', id);
         alert('NGワードが削除されました');
     }
-    else {
-        alert('番号を入力して下さい');
-    }
+
 });
 
 $('#view_button').click(() => {
@@ -131,11 +127,10 @@ $('#emotion-set').click(() => {
 
     let tmp = '#' + target;
 
-    $('input:radio[name="emotion"]').prop('checked', false);
+    //$('input:radio[name="emotion"]').prop('checked', false);
 
     $(tmp).css('opacity', 0.3);
 
-    /*
     $('input:radio[name="emotion"]').each((key, value) => {
         let current = '#' + $('input:radio[name="emotion"]').val();
 
@@ -144,9 +139,7 @@ $('#emotion-set').click(() => {
         if(current !== target) {
             $(current).css('opacity', 1);
         }
-
     });
-    */
 });
 
 // サーバーからのメッセージ拡散に対する処理
