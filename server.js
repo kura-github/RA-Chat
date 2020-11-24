@@ -32,8 +32,8 @@ const PORT = process.env.PORT || 3000;
 const SYSTEMNICKNAME = '管理人';
 const WARNING = '特定の単語が含まれているため、その内容のメッセージは送信出来ません';
 const LIMIT_OVER = 'メッセージ数の上限に達したため、1分後まで送信出来ません';
-const wp = '振替';  //非悪口極性の単語
-const wn = '消えろ'; //悪口極性の単語
+const wp = '消えろ';  //悪口極性の単語
+const wn = '振替'; //非悪口極性の単語
 const a = 0.9;  //重み定数
 
 // 関数
@@ -144,26 +144,21 @@ const filtering = async (word, roomNum) => {
 const calc_abusiveness = async (word) => {
 
     let c = 0;
-    
-    //c = Math.log((48800000 * 2620000) / (2970000 * 2970000));
-    //c = Math.log(ansArray[0] * ansArray[1] / ansArray[2] * ansArray[3]);
 
     let h1,h2,h3,h4,h5,h6;
 
     h1 = await hit(word, wp);
-    h2 = await hit(wp);
+    h2 = await hit(wn);
     h3 = await hit(word, wn);
-    h4 = await hit(wn);
+    h4 = await hit(wp);
     h5 = await hit(wp);
     h6 = await hit(wn);
 
-    c = Math.log(h1 * h2 / h3 * h4);
+    c = Math.log((h1 * h2) / (h3 * h4));
     
     let f = 0;
 
-    //f = a * Math.log(45400000 / 45400000);
     f = a * Math.log( h5 / h6);
-    //f = a * Math.log(ansArray[4] / ansArray[5]);
 
     //悪口度
     let SO_PMI = 0;
@@ -218,7 +213,6 @@ const hit = async (w1, w2) => {
     
     let result = await cheerio.fetch(searchEngineURL, {q: query}).catch(() => '');
     //スクレイピングした検索件数を数値のみの形式に置き換えて格納
-
 
     let tmp = result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1");
 
