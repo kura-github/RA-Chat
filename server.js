@@ -32,6 +32,7 @@ const PORT = process.env.PORT || 3000;
 const SYSTEMNICKNAME = '管理人';
 const WARNING = '特定の単語が含まれているため、その内容のメッセージは送信出来ません';
 const LIMIT_OVER = 'メッセージ数の上限に達したため、1分後まで送信出来ません';
+const THRESHOLD = 1.5; //悪口かどうかを判定する閾値
 const wp = '消えろ';  //悪口極性の単語
 const wn = '振替'; //非悪口極性の単語
 const a = 0.9;  //重み定数
@@ -124,7 +125,10 @@ const filtering = async (word, roomNum) => {
         let tokens = tokenizer.tokenize(word);
         console.log(tokens);
 
-        
+        if(tokens.pos === '動詞') {
+            console.log(tokens);
+        }
+
     });
     */
 
@@ -133,7 +137,7 @@ const filtering = async (word, roomNum) => {
     let waruguchido = await calc_abusiveness(word);
     console.log(waruguchido);
 
-    if(waruguchido >= 0) {
+    if(waruguchido >= THRESHOLD) {
         result = false;
     }
 
@@ -145,6 +149,7 @@ const calc_abusiveness = async (word) => {
 
     let c = 0;
 
+    //各検索件数を格納する変数
     let h1,h2,h3,h4,h5,h6;
 
     h1 = await hit(word, wp);
@@ -167,11 +172,11 @@ const calc_abusiveness = async (word) => {
 
     console.log(c);
     console.log(f);
-    console.log(SO_PMI * 0.01);
+    console.log(SO_PMI);
     
     console.log(h1,h2,h3,h4,h5,h6);
     
-    return SO_PMI * 0.01;
+    return SO_PMI;
 };
 
 //web検索結果の件数を検索エンジンのページからスクレイピングする関数
@@ -364,11 +369,11 @@ io.on('connection', (socket) => {
 
                 //入力が終了しているのでtypingをfalseにする
                 typing = false;
-                console.log( 'new message', strMessage );
+                console.log('new message', strMessage);
                 console.log('emotion:', emoji);
 
                 // 現在時刻の文字列の作成する
-                const strNow = makeTimeString( new Date() );
+                const strNow = makeTimeString(new Date());
 
                 //送信側か受信側かを分ける
                 let messageType;
@@ -518,6 +523,7 @@ io.on('connection', (socket) => {
             try {
                 //NGワードをファイルに追記
                 fs.appendFileSync(dir, word);
+                console.log(roomNum, word);
             }
             catch(e) {
                 console.log(e);

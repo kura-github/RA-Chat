@@ -69,7 +69,7 @@ $('#regist_button').click(() => {
     if(word) {
         //カンマを付加
         word += ',';
-        socket.emit('word regist', word, $('room').text());
+        socket.emit('word regist', word, $('#room').text());
         console.log('registerd', word);
         alert('NGワードが追加されました');
     }
