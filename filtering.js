@@ -1,5 +1,7 @@
 'use strict';
 
+const { parentPort } = require('worker_threads');
+
 //NGワードとの文字列比較を行う
 const filtering = async (word, roomNum) => {
 
@@ -165,3 +167,12 @@ const hit = async (w1, w2) => {
 
   return hit_count;
 }
+
+parentPort.on('message', (msg) => {
+
+  parentPort.postMessage(filtering(msg));
+  process.exit();
+
+});
+
+
