@@ -6,7 +6,6 @@ const http = require( 'http' );
 const socketIO = require( 'socket.io' );
 const fs = require('fs');
 const jsonfile = require('jsonfile');
-const extra = require('fs-extra');
 
 //形態素解析用のモジュール
 const kuromoji = require('kuromoji');
@@ -18,6 +17,7 @@ const { count } = require('console');
 const { exit } = require('process');
 const { NODATA } = require('dns');
 const { stringify } = require('querystring');
+const parentPost  = require('worker_threads');
 
 //スクレイピングする検索エンジンのURL(Google)
 const searchEngineURL = 'https://www.google.co.jp/search';
@@ -113,19 +113,18 @@ const filtering = async (word, roomNum) => {
     });
   
     // 形態素解析機を作るメソッド
-    
     /*
     builder.build((err, tokenizer) => {
         // 辞書がなかった際のエラー表示
         if(err) { 
-            throw err; 
+            throw err;
         }
     
         // tokenizer.tokenize に文字列を渡して形態素解析する
         let tokens = tokenizer.tokenize(word);
         console.log(tokens);
 
-        if(tokens.pos === '動詞') {
+        if(tokens.pos === '動詞' || tokens.pos === '形容詞' || tokens.pos === '') {
             console.log(tokens);
         }
 
@@ -146,6 +145,8 @@ const filtering = async (word, roomNum) => {
 
 //web上での検索件数を基に悪口度を算出する関数
 const calc_abusiveness = async (word) => {
+
+    
 
     let c = 0;
 
@@ -219,12 +220,12 @@ const hit = async (w1, w2) => {
     let result = await cheerio.fetch(searchEngineURL, {q: query}).catch(() => '');
     //スクレイピングした検索件数を数値のみの形式に置き換えて格納
 
-    let tmp = result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1");
+    let tmp = result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1"); //
 
-    hit_count = parseInt(tmp.replace(/,/g, ''), 10);
+    hit_count = parseInt(tmp.replace(/,/g, ''), 10); //検索件数の数値の中のカンマを取り除く
 
     return hit_count;
-};
+}
 
 // グローバル変数
 let iCountUser = 0; // ユーザー数
@@ -262,6 +263,12 @@ io.on('connection', (socket) => {
         }
         else {
             limit = false;
+        }
+
+        //全てのルームのメッセージロックを解除する
+        for (let key in roomList) {
+           roomList[key] = false;
+           console.log(roomList);
         }
 
         console.log('Timer Reseted');
@@ -322,7 +329,7 @@ io.on('connection', (socket) => {
                 strNickname = strNickname_;
 
                 socketList[strNickname] = socket.id;
-                //socketList[msCount] = 0;
+                roomList[roomNum] = false;
                 
                 // ユーザー数の更新
                 iCountUser++;
@@ -364,7 +371,7 @@ io.on('connection', (socket) => {
                 //メッセージ送信がロックされているルームの場合は送信しない
                 if(roomList[roomNum] === true) {
                     //処理を中断
-                    exit;
+                    exit(1);
                 }
 
                 //入力が終了しているのでtypingをfalseにする
@@ -428,6 +435,7 @@ io.on('connection', (socket) => {
                                     type: messageType
                                 };
 
+                                roomList[roomNum] = true;
                                 io.to(socket.id).emit('spread message', sysMessage);
                             }
 
@@ -447,7 +455,6 @@ io.on('connection', (socket) => {
                         }
                         else {
                             //メンションされていないメッセージの場合
-
                             //ルーム全員に送信
                             io.to(room).emit('spread message', objMessage);
                         }
@@ -488,7 +495,7 @@ io.on('connection', (socket) => {
                         };
     
                         //警告メッセージを送信元に送信
-                        io.to(socket.id).emit('spread message', sysMessage);   
+                        io.to(socket.id).emit('spread message', sysMessage); 
                     }
                 })();
         });

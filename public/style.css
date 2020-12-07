@@ -156,8 +156,8 @@ html, body {
 }
 
 .receive_message {
-  background-color: grey;
-  color: white;
+  background-color: aquamarine;
+  color: black;
   padding: 10px;
   margin: 5px;
   max-width: 400px;
