@@ -6,7 +6,7 @@ const http = require( 'http' );
 const socketIO = require( 'socket.io' );
 const fs = require('fs');
 const jsonfile = require('jsonfile');
-//const { Worker } = require('worker_threads');
+const { Worker } = require('worker_threads');
 
 //形態素解析用のモジュール
 const kuromoji = require('kuromoji');
@@ -107,82 +107,93 @@ const filtering = async (word, roomNum) => {
          str : '消えろ',  word : 'こんにちは'      --->   部分一致していない
     */
 
-    var tokenArray = Array();
+    if(result === true) {
 
-    let builder = kuromoji.builder({
-        //辞書があるディレクトリを指定
-        dicPath: 'node_modules/kuromoji/dict'
-    });
-  
-    // 形態素解析機を作る
-    builder.build((err, tokenizer) => {
-        // 辞書がなかった際のエラー表示
-        if(err) { 
-            throw err;
-        }
+        let tokenArray = Array();
+
+        let builder = kuromoji.builder({
+            //辞書があるディレクトリを指定
+            dicPath: 'node_modules/kuromoji/dict'
+        });
+
+        let tokens;
     
-        // tokenizer.tokenize に文字列を渡して形態素解析する
-        let tokens = tokenizer.tokenize(word);
-        console.log(tokens);
+        // 形態素解析機を作る
+        builder.build((err, tokenizer) => {
+            // 辞書がなかった際のエラー表示
+            if(err) { 
+                throw err;
+            }
+        
+            // tokenizer.tokenize に文字列を渡して形態素解析する
+            tokens = tokenizer.tokenize(word);
+            console.dir(tokens);
+        });
 
         //返ってきたjsonオブジェクトから動詞 or 形容詞 or 名詞に当たる単語を配列に格納していく
         for (let i = 0; i < tokens.length; i++) {
             if(tokens[i].pos === '動詞' || tokens[i].pos === '形容詞' || tokens[i].pos === '名詞') {
                 tokenArray.push(tokens[i].surface_form);
+                console.log('tokenArray:', tokenArray);
+                console.log(tokenArray.length);
             }
-            console.log(tokenArray[i]);
         }
-    });
 
-    //算出した悪口度が0以下であれば悪口単語ではない
+        //算出した悪口度が0以下であれば悪口単語ではない
 
-    let waruguchido;
+        let waruguchido;
 
-    //辞書ファイルを読み込む
-    let wordDict = jsonfile.readFileSync('./value_dict.json', 'utf-8');
+        //辞書ファイルを読み込む
+        let wordDict = jsonfile.readFileSync('./value_dict.json', 'utf-8');
 
-    for (let i = 0; i < wordDict.length; i++) {
-        //既に悪口度を算出してある単語の場合は算出しない
-        if(wordDict[i].word === tokenArray[i]) {
-            waruguchido = wordDict[i].value;      
+        for (let i = 0; i < wordDict.length; i++) {
+            //既に悪口度を算出してある単語の場合は算出しない
+            console.log(tokenArray.length);
+            for(let j = 0; j < tokenArray.length; j++) {
+                if(wordDict[i].word === tokenArray[j]) {
+                    waruguchido = wordDict[i].value;
+                    console.log(waruguchido);      
+                }
+                else {
+                    //悪口度をまだ算出していない単語の場合は算出する
+                    waruguchido = await calc_abusiveness(tokenArray[j]);
+        
+                    console.log(tokenArray[j]);
+                    
+                    //小数点第3位以下を四捨五入する
+                    let value = Math.round(waruguchido * 1000) / 1000;
+        
+                    //辞書ファイルに保存するオブジェクトを作成する
+                    const wordObject = {
+                        word: tokenArray[j],
+                        value: value
+                    };
+        
+                    //jsonオブジェクトにプッシュする
+                    wordDict.push(wordObject);
+        
+                    //jsonオブジェクトを書き込む
+                    jsonfile.writeFileSync('./value_dict.json', wordDict);
+                    break;
+                }
+            }
+            console.log('now');
         }
-        else {
-            //悪口度をまだ算出していない単語の場合は算出する
-            waruguchido = await calc_abusiveness(tokenArray[i]);
+    
+        console.log(waruguchido);
 
-            console.log(tokenArray[i]);
-            
-            //小数点第3位以下を四捨五入する
-            let value = Math.round(waruguchido * 1000) / 1000;
-
-            //辞書ファイルに保存するオブジェクトを作成する
-            const wordObject = {
-                word: word,
-                value: value
-            };
-
-            //jsonオブジェクトにプッシュする
-            wordDict.push(wordObject);
-
-            //jsonオブジェクトを書き込む
-            jsonfile.writeFileSync('./value_dict.json', wordDict);
-            break;
-        }        
+        //THRESHOLD : 閾値
+        //悪口度が閾値以上であれば送信不可にする
+        if(waruguchido >= THRESHOLD) {
+            result = false;
+        }
     }
-  
-    console.log(waruguchido);
-
-    if(waruguchido >= THRESHOLD) {
-        result = false;
-    }
-
+    //判定結果を返す
     return result;
 };
 
 //web上での検索件数を基に悪口度を算出する関数
 const calc_abusiveness = async (word) => {
-
-    
 
     let c = 0;
 
@@ -241,18 +252,6 @@ const hit = async (w1, w2) => {
     console.log(query);
     
     //検索を行う
-
-    /*
-    let result = cheerio.fetchSync(searchEngineURL, {q: query});
-
-    hit_count = result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1");
-
-    console.log(hit_count);
-
-    return hit_count;
-    */
-
-    
     let result = await cheerio.fetch(searchEngineURL, {q: query}).catch(() => '');
     //スクレイピングした検索件数を数値のみの形式に置き換えて格納
 
@@ -333,7 +332,7 @@ io.on('connection', (socket) => {
                     iCountUser--;
 
                     // メッセージオブジェクトに現在時刻を追加
-                    const strNow = makeTimeString( new Date() );
+                    const strNow = makeTimeString(new Date());
 
                     // システムメッセージの作成
                     const objMessage = {
@@ -388,7 +387,7 @@ io.on('connection', (socket) => {
 
                 messageArray = jsonfile.readFileSync(dir,'utf-8');
 
-                console.log(messageArray);
+                console.log(messageArray);  
 
                 //件数分のメッセージをクライアント側に表示させる
                 for (let i = 0; i < messageArray.length; i++) {
@@ -430,19 +429,20 @@ io.on('connection', (socket) => {
                 //judge : 戻り値の判定用の変数
                 //true -> NGワードでない, false -> NGワード
 
+                //let judge;
+
                 //修正箇所
                 (async () => {
 
                     /*
-                    let judge;
-
                     const worker = new Worker('./filtering.js');
 
                     worker.on('message', (ans) => {
                         response.send(word);
                         judge = ans;
-                    })
+                    });
                     */
+
                     let judge = await filtering(strMessage, roomNum);
 
                     if(judge) {

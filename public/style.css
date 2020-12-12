@@ -117,7 +117,8 @@ html, body {
 }
 
 .image_area {
-  width: 40px;
+  width: 45px;
+  height: 45px;
   margin: 10px 0px 10px 10px;
   position: relative;
 }
@@ -126,7 +127,7 @@ html, body {
   position: absolute;
   top: 30%;
   left: 15%;
-  font-size: 50%;
+  font-size: 70%;
   color: white;
 }
 

@@ -97,7 +97,8 @@ $('#view_button').click(() => {
 
 $('#emotion-set').click(() => {
     let target = $(event.target).val();
-    console.log(target);
+    let tmp = '#' + target;
+    let buttonArray = ['#laugh','#smile','#surprise', '#angry', '#cry'];
 
     //クリックしたボタンによってラジオボタンの値を変更する
     switch (target) {
@@ -125,21 +126,14 @@ $('#emotion-set').click(() => {
             break;
     }
 
-    let tmp = '#' + target;
-
-    //$('input:radio[name="emotion"]').prop('checked', false);
-
     $(tmp).css('opacity', 0.3);
 
-    $('input:radio[name="emotion"]').each((key, value) => {
-        let current = '#' + $('input:radio[name="emotion"]').val();
-
-        console.log(current);
-
-        if(current !== target) {
-            $(current).css('opacity', 1);
+    for(let i=0; i < buttonArray.length; i++) {
+        if(tmp !== buttonArray[i]) {
+            let selector = buttonArray[i];
+            $(selector).css('opacity', 1);
         }
-    });
+    }
 });
 
 // サーバーからのメッセージ拡散に対する処理
