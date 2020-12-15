@@ -37,7 +37,7 @@ $( 'form' ).submit(() => {
 
         if( $('#input_message').val()) {
             // サーバーに、イベント名'new message' で入力テキストを送信
-            socket.emit('new message', $( '#input_message').val(), $('input[name="emotion"]:checked').val(), $('#room').text());
+            socket.emit('new message', $( '#input_message').val(), $('input[name="emotion"]:checked').val(), $('#room').text(), $('input[name="filter"]').prop('checked'));
 
             $('#input_message').val('');    // テキストボックスを空にする
         }
@@ -68,7 +68,6 @@ $('#regist_button').click(() => {
 
     if(word) {
         //カンマを付加
-        word += ',';
         socket.emit('word regist', word, $('#room').text());
         console.log('registerd', word);
         alert('NGワードが追加されました');
@@ -215,11 +214,13 @@ socket.on('view NG_word', (wordArray) => {
 
     let message = '';
 
-    for (let i = 0; i < wordArray.length - 1; i++) {
+    for (let i = 0; i < wordArray.length; i++) {
         message += i + 1 + '. ';
-        message += wordArray[i];
+        message += wordArray[i].word;
         message += '\n';
     }
+
+    console.log(wordArray);
 
     alert('現在のNGワード\n' + message);
 });

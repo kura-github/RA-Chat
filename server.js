@@ -51,7 +51,8 @@ const makeTimeString = (time) => {
 
 
 //NGワードとの文字列比較を行う
-const filtering = async (word, roomNum) => {
+/*
+const filtering = async (word, roomNum, filter) => {
 
     //NGワードを格納する配列
     let wordArray = Array();
@@ -59,29 +60,24 @@ const filtering = async (word, roomNum) => {
     //文字列比較用
     let str = '';
 
-    //NGワードファイルを格納する一時変数
-    let data;
-
     //判定結果   true: 送信可能なメッセージ,  false: 送信出来ないメッセージ
     let result = true;
 
     //NGワードファイルを読み込む
     try {
         console.log(roomNum);
-        data = fs.readFileSync('./NG_word' + roomNum + '.txt', 'utf-8');
-
-        //カンマで分割して配列に格納
-        wordArray = data.split(',');
+        let dir = './NG_word' + roomNum + '.json';
+        wordArray = JSON.parse(fs.readFileSync(dir, 'utf-8'));
     }
     catch(e) {
         console.log(e);
     }
 
     //完全一致するかどうか
-    for(let i=0; i<wordArray.length-1; i++) {
+    for(let i=0; i<wordArray.length; i++) {
 
         //一致したらfalseにしてループを抜ける
-        if(wordArray[i] === word) {
+        if(wordArray[i].word === word) {
             console.log('bad-word');
             result = false;
             break;
@@ -89,10 +85,10 @@ const filtering = async (word, roomNum) => {
     }
 
     //部分一致するかどうか
-    for(let i=0; i<wordArray.length-1; i++) {
+    for(let i=0; i<wordArray.length; i++) {
 
         //NGワードの配列の要素をstrに代入
-        str = wordArray[i];
+        str = wordArray[i].word;
         
         //strと入力されたメッセージを比較
         if(word.indexOf(str) !== -1) {
@@ -102,13 +98,10 @@ const filtering = async (word, roomNum) => {
         }
     }
 
-    /*
-    例:  str : '消えろ',  word : 'お前は消えろ'    --->   部分一致している
-         str : '消えろ',  word : 'こんにちは'      --->   部分一致していない
-    */
+    //例:  str : '消えろ',  word : 'お前は消えろ'    --->   部分一致している
+         //str : '消えろ',  word : 'こんにちは'      --->   部分一致していない
 
-    if(result === true) {
-
+    if(result === true && filter === true) {
         let tokenArray = Array();
 
         let builder = kuromoji.builder({
@@ -119,7 +112,7 @@ const filtering = async (word, roomNum) => {
         let tokens;
     
         // 形態素解析機を作る
-        builder.build((err, tokenizer) => {
+        builder.build(async (err, tokenizer) => {
             // 辞書がなかった際のエラー表示
             if(err) { 
                 throw err;
@@ -128,16 +121,16 @@ const filtering = async (word, roomNum) => {
             // tokenizer.tokenize に文字列を渡して形態素解析する
             tokens = tokenizer.tokenize(word);
             console.dir(tokens);
-        });
 
-        //返ってきたjsonオブジェクトから動詞 or 形容詞 or 名詞に当たる単語を配列に格納していく
-        for (let i = 0; i < tokens.length; i++) {
-            if(tokens[i].pos === '動詞' || tokens[i].pos === '形容詞' || tokens[i].pos === '名詞') {
-                tokenArray.push(tokens[i].surface_form);
-                console.log('tokenArray:', tokenArray);
-                console.log(tokenArray.length);
+            //返ってきたjsonオブジェクトから動詞 or 形容詞 or 名詞に当たる単語を配列に格納していく
+            for (let i = 0; i < tokens.length; i++) {
+                if(tokens[i].pos === '動詞' || tokens[i].pos === '形容詞' || tokens[i].pos === '名詞') {
+                    tokenArray.push(tokens[i].surface_form);
+                    console.log('tokenArray:', tokenArray);
+                    console.log(tokenArray.length);
+                }
             }
-        }
+        })
 
         //算出した悪口度が0以下であれば悪口単語ではない
 
@@ -148,7 +141,6 @@ const filtering = async (word, roomNum) => {
 
         for (let i = 0; i < wordDict.length; i++) {
             //既に悪口度を算出してある単語の場合は算出しない
-            console.log(tokenArray.length);
             for(let j = 0; j < tokenArray.length; j++) {
                 if(wordDict[i].word === tokenArray[j]) {
                     waruguchido = wordDict[i].value;
@@ -174,13 +166,10 @@ const filtering = async (word, roomNum) => {
         
                     //jsonオブジェクトを書き込む
                     jsonfile.writeFileSync('./value_dict.json', wordDict);
-                    break;
+                    continue;
                 }
             }
-            console.log('now');
         }
-    
-        console.log(waruguchido);
 
         //THRESHOLD : 閾値
         //悪口度が閾値以上であれば送信不可にする
@@ -230,8 +219,6 @@ const calc_abusiveness = async (word) => {
 //web検索結果の件数を検索エンジンのページからスクレイピングする関数
 const hit = async (w1, w2) => {
 
-    let i=0;
-
     //検索結果の件数を格納する変数
     var hit_count;
 
@@ -261,6 +248,8 @@ const hit = async (w1, w2) => {
 
     return hit_count;
 }
+
+*/
 
 // グローバル変数
 let iCountUser = 0; // ユーザー数
@@ -400,7 +389,7 @@ io.on('connection', (socket) => {
 
         // 新しいメッセージ受信時の処理
         // ・クライアント側のメッセージ送信時の「socket.emit( 'new message', $( '#input_message' ).val() );」に対する処理
-        socket.on('new message', (strMessage, emoji, roomNum) => {
+        socket.on('new message', (strMessage, emoji, roomNum, filter) => {
 
                 //メッセージ送信がロックされているルームの場合は送信しない
                 if(roomList[roomNum] === true) {
@@ -434,17 +423,20 @@ io.on('connection', (socket) => {
                 //修正箇所
                 (async () => {
 
-                    /*
+                    let judge;
+
                     const worker = new Worker('./filtering.js');
 
                     worker.on('message', (ans) => {
-                        response.send(word);
+                        console.log('thread start');
+                        console.log(ans);
                         judge = ans;
                     });
-                    */
 
-                    let judge = await filtering(strMessage, roomNum);
+                    worker.postMessage(strMessage, roomNum, filter);
 
+                    //let judge = await filtering(strMessage, roomNum, filter);
+                    
                     if(judge) {
                         //NGワードではない場合
                         
@@ -561,22 +553,31 @@ io.on('connection', (socket) => {
                     strDate: strNow,
                     type: 'system'
                 };
-
                 io.to(roomNum).emit('spread message', objMessage);
             }
-
         });
 
         //NGワード登録時の処理
         socket.on('word regist', (word, roomNum) => {
 
             //ルーム番号によってファイル名を決定
-            let dir = './NG_word' + roomNum + '.txt';
+            let dir = './NG_word' + roomNum + '.json';
 
             try {
                 //NGワードをファイルに追記
-                fs.appendFileSync(dir, word);
-                console.log(roomNum, word);
+                let data = JSON.parse(fs.readFileSync(dir, 'utf-8'));
+
+                const ngwordObject = {
+                    word: word
+                };
+
+                data.push(ngwordObject);
+
+                fs.writeFileSync(dir, JSON.stringify(data), {
+                    encoding: 'utf-8', 
+                    replacer: null, 
+                    spaces: null
+                });
             }
             catch(e) {
                 console.log(e);
@@ -585,20 +586,20 @@ io.on('connection', (socket) => {
 
         //NGワード削除時の処理
         socket.on('word delete', (id, roomNum) => {
-            let wordArray = Array();
-            let data;
-
             //ルーム番号によってファイル名を指定
-            let dir = './NG_word' + roomNum + '.txt';
+            let dir = './NG_word' + roomNum + '.json';
 
             try {
-                data = fs.readFileSync(dir, 'utf-8');
+                let data = JSON.parse(fs.readFileSync(dir, 'utf-8'));
                 //カンマで分割して配列に格納
-                wordArray = data.split(',');
 
-                wordArray.splice(id-1,1); //idで指定された要素を削除(配列の添え字を考慮する)
+                data = data.splice(id-1,1); //idで指定された要素を削除(配列の添え字を考慮する)
 
-                fs.writeFileSync(dir, wordArray);
+                fs.writeFileSync(dir, JSON.stringify(data), {
+                    encoding: 'utf-8', 
+                    replacer: null, 
+                    spaces: null
+                });
             }
             catch(e) {
                 console.log(e);
@@ -607,19 +608,17 @@ io.on('connection', (socket) => {
 
         //現在のNGワードの参照
         socket.on('view word', (roomNum) => {
-            let wordArray = Array();
-            let data;
+
+            let data = Array();
 
             //ルーム番号によってディレクトリを決定
-            let dir = './NG_word' + roomNum + '.txt';
+            let dir = './NG_word' + roomNum + '.json';
 
             //NGワードファイルを読み込む
             try {
-                data = fs.readFileSync(dir, 'utf-8');
+                data = JSON.parse(fs.readFileSync(dir, 'utf-8'));
                 //カンマで分割して配列に格納
-                wordArray = data.split(',');
-
-                io.to(roomNum).emit('view NG_word', wordArray);
+                io.to(roomNum).emit('view NG_word', data);
             }
             catch(e) {
                 console.log(e);
