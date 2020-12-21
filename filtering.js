@@ -1,11 +1,28 @@
 'use strict';
 
 const { parentPort } = require('worker_threads');
+const { workerData } = require('worker_threads');
+const kuromoji = require('kuromoji');
+const jsonfile = require('jsonfile');
+const fs = require('fs');
+const THRESHOLD = 0; //悪口かどうかを判定する閾値
+const wp = '消えろ';  //悪口極性の単語
+const wn = '振替'; //非悪口極性の単語
+const a = 0.9;  //重み定数
+
+//スクレイピング用のモジュール
+const cheerio = require('cheerio-httpcli');
+const searchEngineURL = 'https://www.google.co.jp/';
+
+console.log('strMessage:' + workerData[0]);
+console.log('roomNum:' + workerData[1]);
+console.log('filter:' + workerData[2]);
+
 
 //NGワードとの文字列比較を行う
 const filtering = async (word, roomNum, filter) => {
 
-    parentPort.postMessage('now');
+    console.log('now');
 
     //NGワードを格納する配列
     let wordArray = Array();
@@ -45,7 +62,7 @@ const filtering = async (word, roomNum, filter) => {
         
         //strと入力されたメッセージを比較
         if(word.indexOf(str) !== -1) {
-            console.log('matched: ', str);
+            console.log('matched: ' + str);
             result = false;
             break;
         }
@@ -57,7 +74,6 @@ const filtering = async (word, roomNum, filter) => {
     */
 
     if(result === true && filter === true) {
-        /*
         let tokenArray = Array();
 
         let builder = kuromoji.builder({
@@ -82,56 +98,54 @@ const filtering = async (word, roomNum, filter) => {
             for (let i = 0; i < tokens.length; i++) {
                 if(tokens[i].pos === '動詞' || tokens[i].pos === '形容詞' || tokens[i].pos === '名詞') {
                     tokenArray.push(tokens[i].surface_form);
-                    console.log('tokenArray:', tokenArray);
+                    console.log(tokenArray);
                     console.log(tokenArray.length);
                 }
             }
-        })
 
-        //算出した悪口度が0以下であれば悪口単語ではない
+            //算出した悪口度が0以下であれば悪口単語ではない
 
-        let waruguchido;
+            //辞書ファイルを読み込む
+            let wordDict = jsonfile.readFileSync('./value_dict.json', 'utf-8');
 
-        //辞書ファイルを読み込む
-        let wordDict = jsonfile.readFileSync('./value_dict.json', 'utf-8');
-
-        for (let i = 0; i < wordDict.length; i++) {
-            //既に悪口度を算出してある単語の場合は算出しない
-            for(let j = 0; j < tokenArray.length; j++) {
-                if(wordDict[i].word === tokenArray[j]) {
-                    waruguchido = wordDict[i].value;
-                    console.log(waruguchido);      
-                }
-                else {
-                    //悪口度をまだ算出していない単語の場合は算出する
-                    waruguchido = await calc_abusiveness(tokenArray[j]);
-        
-                    console.log(tokenArray[j]);
-                    
-                    //小数点第3位以下を四捨五入する
-                    let value = Math.round(waruguchido * 1000) / 1000;
-        
-                    //辞書ファイルに保存するオブジェクトを作成する
-                    const wordObject = {
-                        word: tokenArray[j],
-                        value: value
-                    };
-        
-                    //jsonオブジェクトにプッシュする
-                    wordDict.push(wordObject);
-        
-                    //jsonオブジェクトを書き込む
-                    jsonfile.writeFileSync('./value_dict.json', wordDict);
-                    continue;
+            for (let i = 0; i < wordDict.length; i++) {
+                //既に悪口度を算出してある単語の場合は算出しない
+                for(let j = 0; j < tokenArray.length; j++) {
+                    if(wordDict[i].word === tokenArray[j]) {
+                        waruguchido = wordDict[i].value;
+                        console.log('119:' + waruguchido);      
+                    }
+                    else {
+                        //悪口度をまだ算出していない単語の場合は算出する
+                        waruguchido = await calc_abusiveness(tokenArray[j]);
+            
+                        console.log(tokenArray[j]);
+                        
+                        //小数点第3位以下を四捨五入する
+                        let value = Math.round(waruguchido * 1000) / 1000;
+            
+                        //辞書ファイルに保存するオブジェクトを作成する
+                        const wordObject = {
+                            word: tokenArray[j],
+                            value: value
+                        };
+            
+                        //jsonオブジェクトにプッシュする
+                        wordDict.push(wordObject);
+            
+                        //jsonオブジェクトを書き込む
+                        jsonfile.writeFileSync('./value_dict.json', wordDict);
+                        continue;
+                    }
                 }
             }
-        }
-        */
+        });
 
         //THRESHOLD : 閾値
         //悪口度が閾値以上であれば送信不可にする
 
         let waruguchido = await calc_abusiveness(word);
+        parentPort.postMessage(waruguchido);
 
         if(waruguchido >= THRESHOLD) {
             result = false;
@@ -171,8 +185,6 @@ const calc_abusiveness = async (word) => {
     console.log(f);
     console.log(SO_PMI);
     
-    console.log(h1,h2,h3,h4,h5,h6);
-    
     return SO_PMI;
 };
 
@@ -209,10 +221,9 @@ const hit = async (w1, w2) => {
     return hit_count;
 }
 
-parentPort.on('message', async (msg, roomNum, filter) => {
-  parentPort.postMessage('in thread');
-  parentPort.postMessage(await filtering(msg, roomNum, filter));
-  process.exit();
-});
-
-
+(async () => {
+    let ans = await filtering(workerData[0], workerData[1], workerData[2]);
+    console.log('filtering.js : 229');
+    parentPort.postMessage(ans);
+    process.exit();
+})();

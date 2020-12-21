@@ -8,18 +8,14 @@ const fs = require('fs');
 const jsonfile = require('jsonfile');
 const { Worker } = require('worker_threads');
 
-//形態素解析用のモジュール
 const kuromoji = require('kuromoji');
+const THRESHOLD = 1.0; //悪口かどうかを判定する閾値
+const wp = '消えろ';  //悪口極性の単語
+const wn = '振替'; //非悪口極性の単語
+const a = 0.9;  //重み定数
 
 //スクレイピング用のモジュール
 const cheerio = require('cheerio-httpcli');
-const { json, response } = require('express');
-const { count } = require('console');
-const { exit } = require('process');
-const { NODATA } = require('dns');
-const { stringify } = require('querystring');
-
-//スクレイピングする検索エンジンのURL(Google)
 const searchEngineURL = 'https://www.google.co.jp/search';
 
 // オブジェクト
@@ -32,10 +28,6 @@ const PORT = process.env.PORT || 3000;
 const SYSTEMNICKNAME = '管理人';
 const WARNING = '特定の単語が含まれているため、その内容のメッセージは送信出来ません';
 const LIMIT_OVER = 'メッセージ数の上限に達したため、1分後まで送信出来ません';
-const THRESHOLD = 0; //悪口かどうかを判定する閾値
-const wp = '消えろ';  //悪口極性の単語
-const wn = '振替'; //非悪口極性の単語
-const a = 0.9;  //重み定数
 
 // 関数
 // 数字を２桁の文字列に変換
@@ -51,7 +43,6 @@ const makeTimeString = (time) => {
 
 
 //NGワードとの文字列比較を行う
-/*
 const filtering = async (word, roomNum, filter) => {
 
     //NGワードを格納する配列
@@ -99,9 +90,10 @@ const filtering = async (word, roomNum, filter) => {
     }
 
     //例:  str : '消えろ',  word : 'お前は消えろ'    --->   部分一致している
-         //str : '消えろ',  word : 'こんにちは'      --->   部分一致していない
+    //str : '消えろ',  word : 'こんにちは'      --->   部分一致していない
 
     if(result === true && filter === true) {
+
         let tokenArray = Array();
 
         let builder = kuromoji.builder({
@@ -110,6 +102,14 @@ const filtering = async (word, roomNum, filter) => {
         });
 
         let tokens;
+
+        let waruguchido;
+        let total=0;
+        let ans=0;
+
+        //辞書ファイルを読み込む
+        let wordDict = jsonfile.readFileSync('./value_dict.json', 'utf-8');
+        let targetArray = Array(); //まだ計算していない形態素のインデックスを格納する配列
     
         // 形態素解析機を作る
         builder.build(async (err, tokenizer) => {
@@ -130,50 +130,68 @@ const filtering = async (word, roomNum, filter) => {
                     console.log(tokenArray.length);
                 }
             }
-        })
 
-        //算出した悪口度が0以下であれば悪口単語ではない
+            //算出した悪口度が0以下であれば悪口単語ではない
+            console.log(wordDict);
 
-        let waruguchido;
+            const sentinel = {
+                word: "000",
+                value: 0
+            };
 
-        //辞書ファイルを読み込む
-        let wordDict = jsonfile.readFileSync('./value_dict.json', 'utf-8');
+            //番兵オブジェクトを末尾に追加する
+            wordDict.push(sentinel);
 
-        for (let i = 0; i < wordDict.length; i++) {
-            //既に悪口度を算出してある単語の場合は算出しない
-            for(let j = 0; j < tokenArray.length; j++) {
-                if(wordDict[i].word === tokenArray[j]) {
-                    waruguchido = wordDict[i].value;
-                    console.log(waruguchido);      
-                }
-                else {
-                    //悪口度をまだ算出していない単語の場合は算出する
-                    waruguchido = await calc_abusiveness(tokenArray[j]);
-        
-                    console.log(tokenArray[j]);
+            for (let i = 0; i < tokenArray.length; i++) {
+                //既に悪口度を算出してある単語の場合は算出しない
+                for(let j = 0; j < wordDict.length; j++) {
+                    if(tokenArray[i] === wordDict[j].word) {
+                        total += wordDict[j].value;
+                        console.log('matched', wordDict[j].word, tokenArray[i]);
+                        break;
+                    }
                     
-                    //小数点第3位以下を四捨五入する
-                    let value = Math.round(waruguchido * 1000) / 1000;
-        
-                    //辞書ファイルに保存するオブジェクトを作成する
-                    const wordObject = {
-                        word: tokenArray[j],
-                        value: value
-                    };
-        
-                    //jsonオブジェクトにプッシュする
-                    wordDict.push(wordObject);
-        
-                    //jsonオブジェクトを書き込む
-                    jsonfile.writeFileSync('./value_dict.json', wordDict);
-                    continue;
+                    if(j === wordDict.length - 1) {
+                        //番兵オブジェクトに到達した(値が見つからなかった)場合はその要素のインデックスを格納
+                        targetArray.push(i);
+                    }
                 }
             }
-        }
+
+            console.log(targetArray);
+
+            for(let i=0; i<targetArray.length; i++) {
+
+                waruguchido = await calc_abusiveness(tokenArray[targetArray[i]]);
+                total += waruguchido;
+
+                //小数点第3位以下を四捨五入する
+                let value = Math.round(waruguchido * 1000) / 1000;
+                
+                //辞書ファイルに保存するオブジェクトを作成する
+                const wordObject = {
+                    word: tokenArray[targetArray[i]],
+                    value: value
+                };
+
+                //jsonオブジェクトにプッシュする
+                wordDict.push(wordObject);
+
+                //jsonオブジェクトを書き込む
+                jsonfile.writeFileSync('./value_dict.json', wordDict);
+            }
+            //平均値を算出する
+            ans = total / tokenArray.length;
+        })
 
         //THRESHOLD : 閾値
         //悪口度が閾値以上であれば送信不可にする
-        if(waruguchido >= THRESHOLD) {
+
+        //let waruguchido = await calc_abusiveness(word);
+        console.log(waruguchido);
+        console.log(ans);
+
+        if(ans >= THRESHOLD) {
             result = false;
         }
     }
@@ -207,11 +225,11 @@ const calc_abusiveness = async (word) => {
 
     SO_PMI = c + f;
 
-    console.log(c);
-    console.log(f);
+    //console.log(c);
+    //console.log(f);
     console.log(SO_PMI);
     
-    console.log(h1,h2,h3,h4,h5,h6);
+    //console.log(h1,h2,h3,h4,h5,h6);
     
     return SO_PMI;
 };
@@ -238,18 +256,23 @@ const hit = async (w1, w2) => {
 
     console.log(query);
     
-    //検索を行う
-    let result = await cheerio.fetch(searchEngineURL, {q: query}).catch(() => '');
-    //スクレイピングした検索件数を数値のみの形式に置き換えて格納
+    try {
+        //検索を行う
+        let result = await cheerio.fetch(searchEngineURL, {q: query}).catch(() => '');
+        //スクレイピングした検索件数を数値のみの形式に置き換えて格納
 
-    let tmp = result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1"); //
+        let tmp = result.$('#result-stats').text().replace(/約\s(.+)\s件.+/,"$1"); 
+        hit_count = parseInt(tmp.replace(/,/g, ''), 10); //検索件数の数値の中のカンマを取り除く
 
-    hit_count = parseInt(tmp.replace(/,/g, ''), 10); //検索件数の数値の中のカンマを取り除く
+    } 
+    catch(e) {
+        console.log('no result');
+        hit_count = 0;
+    }
 
     return hit_count;
 }
 
-*/
 
 // グローバル変数
 let iCountUser = 0; // ユーザー数
@@ -418,123 +441,120 @@ io.on('connection', (socket) => {
                 //judge : 戻り値の判定用の変数
                 //true -> NGワードでない, false -> NGワード
 
-                //let judge;
-
-                //修正箇所
                 (async () => {
 
-                    let judge;
+                    let judge = await filtering(strMessage, roomNum, filter);
 
-                    const worker = new Worker('./filtering.js');
+                    /*
+                    let dataArray = Array();
+                    dataArray.push(strMessage,roomNum,filter);
+                    const worker = new Worker('./filtering.js', {
+                        workerData: dataArray
+                    });
 
                     worker.on('message', (ans) => {
-                        console.log('thread start');
                         console.log(ans);
                         judge = ans;
                     });
-
-                    worker.postMessage(strMessage, roomNum, filter);
-
-                    //let judge = await filtering(strMessage, roomNum, filter);
-                    
-                    if(judge) {
-                        //NGワードではない場合
-                        
-                        const objMessage = {
-                            strNickname: strNickname,
-                            strMessage: strMessage,
-                            strDate: strNow,
-                            type: messageType,
-                            emotion: emoji
-                        };
-
-                        //メンションされたメッセージかどうかを調べるための正規表現
-                        //メンションの書式: @ユーザ名 メッセージ
-                        let pattern = new RegExp(/^@\w*|\p{Hiragana}|\p{Katakana}|\p{Han}\s\w*|\p{Hiragana}|\p{Katakana}|\p{Han}$/);
-
-                        //メンションされたメッセージの場合
-                        if(pattern.test(strMessage) === true) {
-                            console.log('mention');
-
-                            if(limit === false) {
-                                messageCount++;
-                                console.log(messageCount);
+                    */
+                        if(judge) {
+                            //NGワードではない場合
+                            
+                            const objMessage = {
+                                strNickname: strNickname,
+                                strMessage: strMessage,
+                                strDate: strNow,
+                                type: messageType,
+                                emotion: emoji
+                            };
+    
+                            //メンションされたメッセージかどうかを調べるための正規表現
+                            //メンションの書式: @ユーザ名 メッセージ
+                            let pattern = new RegExp(/^@\w*|\p{Hiragana}|\p{Katakana}|\p{Han}\s\w*|\p{Hiragana}|\p{Katakana}|\p{Han}$/);
+    
+                            //メンションされたメッセージの場合
+                            if(pattern.test(strMessage) === true) {
+                                console.log('mention');
+    
+                                if(limit === false) {
+                                    messageCount++;
+                                    console.log(messageCount);
+                                }
+    
+                                //1分間に同じユーザへのメッセージが10件以上送信された場合
+                                if(messageCount >= 10) {
+    
+                                    messageType = 'system';
+                            
+                                    const sysMessage = {
+                                        strNickname: SYSTEMNICKNAME,
+                                        strMessage: LIMIT_OVER, //警告メッセージの定数
+                                        strDate: strNow,
+                                        type: messageType
+                                    };
+    
+                                    roomList[roomNum] = true;
+                                    io.to(socket.id).emit('spread message', sysMessage);
+                                }
+    
+                                console.log(limit);
+    
+                                //ユーザ名を分割して取り出す
+                                let mention = strMessage.split(/\s/);
+                                mention = mention[0].substring(1);
+                                console.log(mention);
+    
+                                //対象ユーザのソケットIDを格納する
+                                let targetUser = socketList[mention];
+    
+                                //対象ユーザにメッセージを送信する
+                                io.to(targetUser).emit('spread message', objMessage);
+                                io.to(socket.id).emit('spread message', objMessage);
                             }
-
-                            //1分間に同じユーザへのメッセージが10件以上送信された場合
-                            if(messageCount >= 10) {
-
-                                messageType = 'system';
-                        
-                                const sysMessage = {
-                                    strNickname: SYSTEMNICKNAME,
-                                    strMessage: LIMIT_OVER, //警告メッセージの定数
-                                    strDate: strNow,
-                                    type: messageType
-                                };
-
-                                roomList[roomNum] = true;
-                                io.to(socket.id).emit('spread message', sysMessage);
+                            else {
+                                //メンションされていないメッセージの場合
+                                //ルーム全員に送信
+                                io.to(room).emit('spread message', objMessage);
                             }
-
-                            console.log(limit);
-
-                            //ユーザ名を分割して取り出す
-                            let mention = strMessage.split(/\s/);
-                            mention = mention[0].substring(1);
-                            console.log(mention);
-
-                            //対象ユーザのソケットIDを格納する
-                            let targetUser = socketList[mention];
-
-                            //対象ユーザにメッセージを送信する
-                            io.to(targetUser).emit('spread message', objMessage);
-                            io.to(socket.id).emit('spread message', objMessage);
+    
+                            //ルーム番号によってファイル名を指定
+                            let dir = './message_list' + roomNum + '.json';
+    
+                            //メッセージをjsonファイルに書き込む
+                            try {
+                                let data = fs.readFileSync(dir, 'utf-8');
+    
+                                let json = JSON.parse(data);
+                                json.push(objMessage);
+    
+                                fs.writeFileSync(dir, JSON.stringify(json), {
+                                    encoding: 'utf-8', 
+                                    replacer: null, 
+                                    spaces: null
+                                });
+    
+                                console.log(objMessage);
+                            }
+                            catch(e) {
+                                console.log(e);
+                            }
+        
                         }
                         else {
-                            //メンションされていないメッセージの場合
-                            //ルーム全員に送信
-                            io.to(room).emit('spread message', objMessage);
-                        }
-
-                        //ルーム番号によってファイル名を指定
-                        let dir = './message_list' + roomNum + '.json';
-
-                        //メッセージをjsonファイルに書き込む
-                        try {
-                            let data = fs.readFileSync(dir, 'utf-8');
-
-                            let json = JSON.parse(data);
-                            json.push(objMessage);
-
-                            fs.writeFileSync(dir, JSON.stringify(json), {
-                                encoding: 'utf-8', 
-                                replacer: null, 
-                                spaces: null
-                            });
-
-                            console.log(objMessage);
-                        }
-                        catch(e) {
-                            console.log(e);
-                        }
     
-                    }
-                    else {
-
-                        //NGワードの場合
-                        messageType = 'system';
-                        
-                        const sysMessage = {
-                            strNickname: SYSTEMNICKNAME,
-                            strMessage: WARNING, //警告メッセージの定数
-                            strDate: strNow,
-                            type: messageType
-                        };
-    
-                        //警告メッセージを送信元に送信
-                        io.to(socket.id).emit('spread message', sysMessage); 
-                    }
+                            //NGワードの場合
+                            messageType = 'system';
+                            
+                            const sysMessage = {
+                                strNickname: SYSTEMNICKNAME,
+                                strMessage: WARNING, //警告メッセージの定数
+                                strDate: strNow,
+                                type: messageType
+                            };
+        
+                            //警告メッセージを送信元に送信
+                            io.to(socket.id).emit('spread message', sysMessage); 
+                        }
                 })();
         });
 
