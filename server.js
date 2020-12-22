@@ -181,7 +181,7 @@ const filtering = async (word, roomNum, filter) => {
                 if(ans >= THRESHOLD) {
                     console.log(ans);
                     result = false;
-                    io.to(roomNum).emit('calc done' , WARNING, result);
+                    io.to(roomNum).emit('calc done' , word, result);
                 }
             })    
         }
@@ -635,42 +635,43 @@ io.on('connection', (socket) => {
         });
 
         socket.on('message ok', (objMessage, roomNum, result) => {
+            console.log(objMessage.strMessage);
             //計算が終了したらメッセージを追加し直す
             if(result === false) { 
-                objMessage.type = 'system';
-                objMessage.strMessage = WARNING;
-                objMessage.strNickname = SYSTEMNICKNAME;
-                objMessage.emotion = '';
-            }
-            else {
 
+                console.log("message ok: result false");
                 //ルーム番号によってファイル名を指定
                 let dir = './message_list' + roomNum + '.json';
         
-                //メッセージをjsonファイルに書き込む
+                //メッセージをjsonファイルから削除する
                 try {
                     let data = fs.readFileSync(dir, 'utf-8');
 
                     //重複した要素を削除
                     let json = JSON.parse(data);
                     for(let i=0; i<json.length; i++) {
-                        if(json[i].word === objMessage.strMessage) {
-                            delete json[i];
+                        if(json[i].strMessage === objMessage.strMessage) {
+                            json = json.splice(i,1);
+                            console.log('deleted');
                         }
                     }
-                    json.push(objMessage);
 
                     fs.writeFileSync(dir, JSON.stringify(json), {
                         encoding: 'utf-8', 
                         replacer: null, 
                         spaces: null
                     });
-
                 }
                 catch(e) {
                     console.log(e);
                 }
+
+                objMessage.type = 'system';
+                objMessage.strMessage = WARNING;
+                objMessage.strNickname = SYSTEMNICKNAME;
+                objMessage.emotion = '';
             }
+
             io.to(roomNum).emit('spread message', objMessage);
         });
 });

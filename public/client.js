@@ -232,7 +232,6 @@ socket.on('view NG_word', (wordArray) => {
 
 socket.on('calc done', (msg, result) => {
     $('#message-list div.box:last').remove();
-    //$('#message-list ')
     tmpObject.strMessage = msg;
     socket.emit('message ok', tmpObject, $('#room').text(), result);
 });
