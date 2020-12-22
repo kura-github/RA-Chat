@@ -92,110 +92,99 @@ const filtering = async (word, roomNum, filter) => {
     //例:  str : '消えろ',  word : 'お前は消えろ'    --->   部分一致している
     //str : '消えろ',  word : 'こんにちは'      --->   部分一致していない
 
-    if(result === true && filter === true) {
+        if(result === true && filter === true) {
 
-        let tokenArray = Array();
+            let tokenArray = Array();
 
-        let builder = kuromoji.builder({
-            //辞書があるディレクトリを指定
-            dicPath: 'node_modules/kuromoji/dict'
-        });
+            let builder = kuromoji.builder({
+                //辞書があるディレクトリを指定
+                dicPath: 'node_modules/kuromoji/dict'
+            });
 
-        let tokens;
+            let tokens;
 
-        let waruguchido;
-        let total=0;
-        let ans=0;
+            let waruguchido;
+            let total=0;
+            let ans=0;
 
-        //辞書ファイルを読み込む
-        let wordDict = jsonfile.readFileSync('./value_dict.json', 'utf-8');
-        let targetArray = Array(); //まだ計算していない形態素のインデックスを格納する配列
-    
-        // 形態素解析機を作る
-        builder.build(async (err, tokenizer) => {
-            // 辞書がなかった際のエラー表示
-            if(err) { 
-                throw err;
-            }
+            //辞書ファイルを読み込む
+            let wordDict = jsonfile.readFileSync('./value_dict.json', 'utf-8');
+            let targetArray = Array(); //まだ計算していない形態素のインデックスを格納する配列
         
-            // tokenizer.tokenize に文字列を渡して形態素解析する
-            tokens = tokenizer.tokenize(word);
-            console.dir(tokens);
-
-            //返ってきたjsonオブジェクトから動詞 or 形容詞 or 名詞に当たる単語を配列に格納していく
-            for (let i = 0; i < tokens.length; i++) {
-                if(tokens[i].pos === '動詞' || tokens[i].pos === '形容詞' || tokens[i].pos === '名詞') {
-                    tokenArray.push(tokens[i].surface_form);
-                    console.log('tokenArray:', tokenArray);
-                    console.log(tokenArray.length);
+            // 形態素解析機を作る
+            builder.build(async (err, tokenizer) => {
+                // 辞書がなかった際のエラー表示
+                if(err) { 
+                    throw err;
                 }
-            }
+            
+                // tokenizer.tokenize に文字列を渡して形態素解析する
+                tokens = tokenizer.tokenize(word);
+                console.dir(tokens);
 
-            //算出した悪口度が0以下であれば悪口単語ではない
-            console.log(wordDict);
-
-            const sentinel = {
-                word: "000",
-                value: 0
-            };
-
-            //番兵オブジェクトを末尾に追加する
-            wordDict.push(sentinel);
-
-            for (let i = 0; i < tokenArray.length; i++) {
-                //既に悪口度を算出してある単語の場合は算出しない
-                for(let j = 0; j < wordDict.length; j++) {
-                    if(tokenArray[i] === wordDict[j].word) {
-                        total += wordDict[j].value;
-                        console.log('matched', wordDict[j].word, tokenArray[i]);
-                        break;
+                //返ってきたjsonオブジェクトから動詞 or 形容詞 or 名詞に当たる単語を配列に格納していく
+                for (let i = 0; i < tokens.length; i++) {
+                    if(tokens[i].pos === '動詞' || tokens[i].pos === '形容詞' || tokens[i].pos === '名詞') {
+                        tokenArray.push(tokens[i].surface_form);
+                        console.log('tokenArray:', tokenArray);
+                        console.log(tokenArray.length);
                     }
+                }
+
+                //算出した悪口度が0以下であれば悪口単語ではない
+                console.log(wordDict);
+
+                for (let i = 0; i < tokenArray.length; i++) {
+                    //既に悪口度を算出してある単語の場合は算出しない
+                    for(let j = 0; j < wordDict.length; j++) {
+                        if(tokenArray[i] === wordDict[j].word) {
+                            total += wordDict[j].value;
+                            console.log('matched', wordDict[j].word, tokenArray[i]);
+                            break;
+                        }
+                        
+                        if(j === wordDict.length - 1) {
+                            //番兵オブジェクトに到達した(値が見つからなかった)場合はその要素のインデックスを格納
+                            targetArray.push(i);
+                        }
+                    }
+                }
+
+                console.log(targetArray);
+
+                for(let i=0; i<targetArray.length; i++) {
+
+                    waruguchido = await calc_abusiveness(tokenArray[targetArray[i]]);
+                    total += waruguchido;
+
+                    //小数点第3位以下を四捨五入する
+                    let value = Math.round(waruguchido * 1000) / 1000;
                     
-                    if(j === wordDict.length - 1) {
-                        //番兵オブジェクトに到達した(値が見つからなかった)場合はその要素のインデックスを格納
-                        targetArray.push(i);
-                    }
+                    //辞書ファイルに保存するオブジェクトを作成する
+                    const wordObject = {
+                        word: tokenArray[targetArray[i]],
+                        value: value
+                    };
+
+                    //jsonオブジェクトにプッシュする
+                    wordDict.push(wordObject);
+
+                    //jsonオブジェクトを書き込む
+                    jsonfile.writeFileSync('./value_dict.json', wordDict);
                 }
-            }
+                //平均値を算出する
+                ans = total / tokenArray.length;
 
-            console.log(targetArray);
+                //THRESHOLD : 閾値
+                //悪口度が閾値以上であれば送信不可にする
 
-            for(let i=0; i<targetArray.length; i++) {
-
-                waruguchido = await calc_abusiveness(tokenArray[targetArray[i]]);
-                total += waruguchido;
-
-                //小数点第3位以下を四捨五入する
-                let value = Math.round(waruguchido * 1000) / 1000;
-                
-                //辞書ファイルに保存するオブジェクトを作成する
-                const wordObject = {
-                    word: tokenArray[targetArray[i]],
-                    value: value
-                };
-
-                //jsonオブジェクトにプッシュする
-                wordDict.push(wordObject);
-
-                //jsonオブジェクトを書き込む
-                jsonfile.writeFileSync('./value_dict.json', wordDict);
-            }
-            //平均値を算出する
-            ans = total / tokenArray.length;
-        })
-
-        //THRESHOLD : 閾値
-        //悪口度が閾値以上であれば送信不可にする
-
-        //let waruguchido = await calc_abusiveness(word);
-        console.log(waruguchido);
-        console.log(ans);
-
-        if(ans >= THRESHOLD) {
-            result = false;
+                if(ans >= THRESHOLD) {
+                    console.log(ans);
+                    result = false;
+                    io.to(roomNum).emit('calc done' , WARNING, result);
+                }
+            })    
         }
-    }
-    //判定結果を返す
     return result;
 };
 
@@ -444,7 +433,7 @@ io.on('connection', (socket) => {
                 (async () => {
 
                     let judge = await filtering(strMessage, roomNum, filter);
-
+                    console.log(judge);
                     /*
                     let dataArray = Array();
                     dataArray.push(strMessage,roomNum,filter);
@@ -643,6 +632,46 @@ io.on('connection', (socket) => {
             catch(e) {
                 console.log(e);
             }
+        });
+
+        socket.on('message ok', (objMessage, roomNum, result) => {
+            //計算が終了したらメッセージを追加し直す
+            if(result === false) { 
+                objMessage.type = 'system';
+                objMessage.strMessage = WARNING;
+                objMessage.strNickname = SYSTEMNICKNAME;
+                objMessage.emotion = '';
+            }
+            else {
+
+                //ルーム番号によってファイル名を指定
+                let dir = './message_list' + roomNum + '.json';
+        
+                //メッセージをjsonファイルに書き込む
+                try {
+                    let data = fs.readFileSync(dir, 'utf-8');
+
+                    //重複した要素を削除
+                    let json = JSON.parse(data);
+                    for(let i=0; i<json.length; i++) {
+                        if(json[i].word === objMessage.strMessage) {
+                            delete json[i];
+                        }
+                    }
+                    json.push(objMessage);
+
+                    fs.writeFileSync(dir, JSON.stringify(json), {
+                        encoding: 'utf-8', 
+                        replacer: null, 
+                        spaces: null
+                    });
+
+                }
+                catch(e) {
+                    console.log(e);
+                }
+            }
+            io.to(roomNum).emit('spread message', objMessage);
         });
 });
 

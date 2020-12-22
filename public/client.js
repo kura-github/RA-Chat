@@ -135,9 +135,13 @@ $('#emotion-set').click(() => {
     }
 });
 
+var tmpObject;
+
 // サーバーからのメッセージ拡散に対する処理
 // ・サーバー側のメッセージ拡散時の「io.emit( 'spread message', strMessage );」に対する処理
-socket.on('spread message', ( objMessage ) => {
+socket.on('spread message', (objMessage) => {
+
+        tmpObject = objMessage;
         
         const objEmotion = {
             laugh    : '<div class="image_area"><img src="./mark_face_laugh.png"><div class="mask"><div class="caption">笑顔</div></div></div>' ,
@@ -205,6 +209,7 @@ socket.on('spread message', ( objMessage ) => {
             default:
                 break;
         }
+
         console.log(box);
 
         $('#message-list').append(box);    // リストの一番下に追加
@@ -223,4 +228,11 @@ socket.on('view NG_word', (wordArray) => {
     console.log(wordArray);
 
     alert('現在のNGワード\n' + message);
+});
+
+socket.on('calc done', (msg, result) => {
+    $('#message-list div.box:last').remove();
+    //$('#message-list ')
+    tmpObject.strMessage = msg;
+    socket.emit('message ok', tmpObject, $('#room').text(), result);
 });
