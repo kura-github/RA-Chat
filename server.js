@@ -653,7 +653,7 @@ io.on('connection', (socket) => {
                         if(json[i].strMessage === objMessage.strMessage) {
                             json = json.splice(i,1);
                             console.log('deleted');
-                        }
+                        }git
                     }
 
                     fs.writeFileSync(dir, JSON.stringify(json), {
