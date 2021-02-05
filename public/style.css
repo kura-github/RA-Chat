@@ -2,6 +2,7 @@
 
 html, body {
   height: 100%;
+  font-size: 20px;
 }
 
 #wrapper {
@@ -60,6 +61,11 @@ html, body {
   margin-left: 10px;
 }
 
+#chat-form button {
+  border: solid 1px black;
+  font-weight: bold;
+}
+
 #message-list {
   border: solid 1px black;
   width: 700px;
@@ -89,31 +95,29 @@ html, body {
   margin-right: 5px;
   margin-bottom: 5px;
   background-color: azure;
+  background-size: 100%;
+  background-repeat: no-repeat;
+  border: solid 1px black;
 }
 
 #laugh {
   background-image: url('./mark_face_laugh.png');
-  background-size: 25px 25px;
 }
 
 #smile {
   background-image: url('./mark_face_smile.png');
-  background-size: 25px 25px;
 }
 
 #surprise {
   background-image: url('./mark_face_odoroki.png');
-  background-size: 25px 25px;
 }
 
 #angry {
   background-image: url('./mark_face_angry.png');
-  background-size: 25px 25px;
 }
 
 #cry {
   background-image: url('./mark_face_cry.png');
-  background-size: 25px 25px;
 }
 
 .image_area {
@@ -154,27 +158,37 @@ html, body {
   margin: 5px;
   max-width: 400px;
   margin-right: auto;
+  font-weight: bold;
+  border: solid 1px black;
 }
 
 .receive_message {
-  background-color: aquamarine;
-  color: black;
+  background-color: gray;
+  color: white;
   padding: 10px;
   margin: 5px;
   max-width: 400px;
   margin-left: auto;
+  font-weight: bold;
+  border: solid 1px black;
 }
 
 .system_message {
   color: black;
-  opacity: 0.5;
+  opacity: 1.0;
   padding: 10px;
   margin: 5px;
   max-width: 650px;
   align-items: center;
+  font-weight: bold;
 }
 
 .box {
   overflow-wrap: normal;
   display: flex;
+}
+
+/*debug*/
+#filter {
+  display: none;
 }

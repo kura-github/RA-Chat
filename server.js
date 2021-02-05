@@ -9,7 +9,7 @@ const jsonfile = require('jsonfile');
 const { Worker } = require('worker_threads');
 
 const kuromoji = require('kuromoji');
-const THRESHOLD = 1.0; //悪口かどうかを判定する閾値
+const THRESHOLD = 1.0; //悪口かどうかを判定する閾値     
 const wp = '消えろ';  //悪口極性の単語
 const wn = '振替'; //非悪口極性の単語
 const a = 0.9;  //重み定数
@@ -454,7 +454,8 @@ io.on('connection', (socket) => {
                                 strMessage: strMessage,
                                 strDate: strNow,
                                 type: messageType,
-                                emotion: emoji
+                                emotion: emoji,
+                                filter: true
                             };
     
                             //メンションされたメッセージかどうかを調べるための正規表現
@@ -543,6 +544,40 @@ io.on('connection', (socket) => {
         
                             //警告メッセージを送信元に送信
                             io.to(socket.id).emit('spread message', sysMessage); 
+
+
+                            const objMessage = {
+                                strNickname: strNickname,
+                                strMessage: strMessage,
+                                strDate: strNow,
+                                type: messageType,
+                                emotion: emoji,
+                                filter: false
+                            };
+
+
+                             //ルーム番号によってファイル名を指定
+                             let dir = './message_list' + roomNum + '.json';
+
+                            //メッセージをjsonファイルに書き込む
+                            try {
+                                let data = fs.readFileSync(dir, 'utf-8');
+    
+                                let json = JSON.parse(data);
+                                json.push(objMessage);
+    
+                                fs.writeFileSync(dir, JSON.stringify(json), {
+                                    encoding: 'utf-8', 
+                                    replacer: null, 
+                                    spaces: null
+                                });
+    
+                                console.log(objMessage);
+                            }
+                            catch(e) {
+                                console.log(e);
+                            }
+        
                         }
                 })();
         });
@@ -649,6 +684,7 @@ io.on('connection', (socket) => {
 
                     //重複した要素を削除
                     let json = JSON.parse(data);
+                    console.log(json);
                     for(let i=0; i<json.length; i++) {
                         if(json[i].strMessage === objMessage.strMessage) {
                             json = json.splice(i,1);
@@ -656,11 +692,15 @@ io.on('connection', (socket) => {
                         }
                     }
 
+                    console.log('書き込み前:',json);
+
                     fs.writeFileSync(dir, JSON.stringify(json), {
                         encoding: 'utf-8', 
                         replacer: null, 
                         spaces: null
                     });
+
+                    console.log('書き込み後:', json);
                 }
                 catch(e) {
                     console.log(e);
@@ -672,7 +712,7 @@ io.on('connection', (socket) => {
                 objMessage.emotion = '';
             }
 
-            io.to(roomNum).emit('spread message', objMessage);
+            io.to(socket.id).emit('spread message', objMessage);
         });
 });
 
